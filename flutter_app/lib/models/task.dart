@@ -1,13 +1,14 @@
 // lib/models/task_model.dart
 
 class Task {
-  final int? id; // Yeni eklerken null olabilir
+  final int? id;
   final String title;
   final String? description;
   final String status;
   final String priority;
-  final DateTime? dueDate; // Backend'den 'due_date' olarak geliyor
+  final DateTime? dueDate;
   final int? ownerId;
+  final String? ownerName; // <-- YENİ: Görevi alan kişinin adı
 
   Task({
     this.id,
@@ -17,9 +18,9 @@ class Task {
     this.priority = "medium",
     this.dueDate,
     this.ownerId,
+    this.ownerName,
   });
 
-  // Backend'den gelen JSON'ı Dart objesine çevir
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
       id: json['id'],
@@ -27,21 +28,21 @@ class Task {
       description: json['description'],
       status: json['status'] ?? "Yapılacak",
       priority: json['priority'] ?? "medium",
-      dueDate: json['due_date'] != null
-          ? DateTime.parse(json['due_date'])
-          : null,
+      dueDate: json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
       ownerId: json['owner_id'],
+      // Backend'den 'owner' objesi gelirse içindeki 'full_name'i al, yoksa null
+      ownerName: json['owner'] != null ? json['owner']['full_name'] : null,
     );
   }
 
-  // Dart objesini Backend'e göndermek için JSON'a çevir
+  // toJson kısmı aynı kalabilir...
   Map<String, dynamic> toJson() {
     return {
       'title': title,
       'description': description,
       'status': status,
       'priority': priority,
-      'due_date': dueDate?.toIso8601String(), // ISO 8601 formatı (Backend sever)
+      'due_date': dueDate?.toIso8601String(),
     };
   }
 }

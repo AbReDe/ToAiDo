@@ -56,3 +56,49 @@ def update_task(task_id: int, task_update: schemas.TaskUpdate, db: Session = Dep
     db.commit()
     db.refresh(task)
     return task
+
+# 5. GÖREVİ ÜZERİNE AL (ASSIGN)
+@router.put("/{task_id}/assign", response_model=schemas.TaskResponse)
+def assign_task(task_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+    
+    # Görev zaten birindeyse ve o kişi ben değilsem?
+    if task.owner_id is not None and task.owner_id != current_user.id:
+        raise HTTPException(status_code=400, detail="Bu görev zaten başkası tarafından alınmış")
+
+    task.owner_id = current_user.id
+    task.status = "Devam Ediyor" # Durumu güncelle
+    db.commit()
+    db.refresh(task)
+    return task
+
+# 6. GÖREVİ BIRAK (UNASSIGN)
+@router.put("/{task_id}/unassign", response_model=schemas.TaskResponse)
+def unassign_task(task_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+    
+    # Sadece görevi alan kişi bırakabilir
+    if task.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Bu görevi bırakma yetkiniz yok")
+
+    task.owner_id = None
+    task.status = "Yapılacak" # Havuza geri döndü
+    db.commit()
+    db.refresh(task)
+    return task
+
+# 7. GÖREVİ TAMAMLA
+@router.put("/{task_id}/complete", response_model=schemas.TaskResponse)
+def complete_task(task_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+
+    task.status = "Tamamlandı"
+    db.commit()
+    db.refresh(task)
+    return task

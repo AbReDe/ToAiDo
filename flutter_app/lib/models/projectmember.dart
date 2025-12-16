@@ -1,31 +1,21 @@
-import 'package:flutter_app/models/user.dart';
-
+// lib/models/project_member_model.dart
 
 class ProjectMember {
-  final int projectId;
-  final int userId;
-  final String role;
-  final DateTime? joinedAt;
-  final User? userDetails;
+  final int id;
+  final String username;
+  final String fullName;
 
   ProjectMember({
-    required this.projectId,
-    required this.userId,
-    this.role = 'member',
-    this.joinedAt,
-    this.userDetails,
+    required this.id,
+    required this.username,
+    required this.fullName,
   });
 
   factory ProjectMember.fromJson(Map<String, dynamic> json) {
     return ProjectMember(
-      projectId: json['project_id'],
-      userId: json['user_id'],
-      role: json['role'] ?? 'member',
-      joinedAt: json['joined_at'] != null
-          ? DateTime.parse(json['joined_at'])
-          : null,
-    
-      userDetails: json['user'] != null ? User.fromJson(json['user']) : null,
+      id: json['id'],
+      username: json['username'],
+      fullName: json['full_name'],
     );
   }
 }

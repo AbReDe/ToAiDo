@@ -9,45 +9,49 @@ import '../../services/user_service.dart';
 
 class ProfileController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
-  // User Service'i çağırıyoruz
   final UserService _userService = Get.put(UserService());
 
-  // Gözlemlenebilir Değişkenler
+  // --- EKSİK OLAN 'ID' DEĞİŞKENİNİ BURAYA EKLİYORUZ ---
+  var id = 0.obs; // Kullanıcının ID'si
+  // ----------------------------------------------------
+
   var username = "...".obs;
   var email = "...".obs;
-  var fullName = "...".obs; // Düzenleme ekranı için lazım
+  var fullName = "...".obs;
 
   var totalTasks = 0.obs;
   var completedTasks = 0.obs;
   var friendsCount = 0.obs;
+  var hasPendingRequests = false.obs;
 
   var isLoading = false.obs;
-  var hasPendingRequests = false.obs;
 
   @override
   void onInit() {
-    super.onInit();
-    loadUserProfile();
+  super.onInit();
+  loadUserProfile();
   }
 
-  // --- GERÇEK VERİYİ ÇEK ---
   void loadUserProfile() async {
-    isLoading.value = true;
+  isLoading.value = true;
 
-    UserProfile? profile = await _userService.getMyProfile();
+  UserProfile? profile = await _userService.getMyProfile();
 
-    if (profile != null) {
-      username.value = profile.username;
-      email.value = profile.email;
-      fullName.value = profile.fullName ?? ""; // Null gelirse boş yap
+  if (profile != null) {
+  // --- ID'Yİ KAYDETMEYİ UNUTMA ---
+  id.value = profile.id;
+  // -------------------------------
 
-      // İstatistikler Backend'den geliyor!
-      totalTasks.value = profile.totalTasks;
-      completedTasks.value = profile.completedTasks;
-      friendsCount.value = profile.friendsCount;
-    }
+  username.value = profile.username;
+  email.value = profile.email;
+  fullName.value = profile.fullName ?? "";
 
-    isLoading.value = false;
+  totalTasks.value = profile.totalTasks;
+  completedTasks.value = profile.completedTasks;
+  friendsCount.value = profile.friendsCount;
+  }
+
+  isLoading.value = false;
   }
 
   // --- PROFİL GÜNCELLEME ---

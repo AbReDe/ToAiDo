@@ -2,6 +2,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
 
 import '../models/project.dart';
+import '../models/project_invitation_model.dart';
+import '../models/projectmember.dart';
 import '../models/task.dart';
 
 class ProjectService extends GetConnect {
@@ -123,6 +125,58 @@ class ProjectService extends GetConnect {
       return !response.status.hasError;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<bool> updateTaskState(int taskId, String action) async {
+    // action: 'assign', 'unassign', 'complete'
+    try {
+      final headers = await _getHeaders();
+      // Router'ı tasks.py içinde yazdığımız için /tasks/... adresine gidiyoruz
+      final response = await put('/tasks/$taskId/$action', {}, headers: headers);
+      return !response.status.hasError;
+    } catch (e) {
+      return false;
+    }
+  }
+
+
+  Future<List<ProjectInvitation>> getInvitations() async {
+    try {
+      final headers = await _getHeaders();
+      final response = await get('/projects/invitations/my', headers: headers);
+
+      if (response.status.hasError) return [];
+
+      List<dynamic> body = response.body;
+      return body.map((item) => ProjectInvitation.fromJson(item)).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // DAVETE CEVAP VER (accept / reject)
+  Future<bool> respondInvitation(int inviteId, String action) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await put('/projects/invitations/$inviteId/$action', {}, headers: headers);
+      return !response.status.hasError;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<ProjectMember>> getProjectMembers(int projectId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await get('/projects/$projectId/members', headers: headers);
+
+      if (response.status.hasError) return [];
+
+      List<dynamic> body = response.body;
+      return body.map((item) => ProjectMember.fromJson(item)).toList();
+    } catch (e) {
+      return [];
     }
   }
 }

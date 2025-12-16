@@ -80,3 +80,19 @@ class Friendship(Base):
     receiver_id = Column(Integer, ForeignKey("users.id")) # İsteği alan
     status = Column(String, default="pending") # pending (bekliyor), accepted (kabul), rejected (red)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    
+class ProjectInvitation(Base):
+    __tablename__ = "project_invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    sender_id = Column(Integer, ForeignKey("users.id"))
+    receiver_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(String, default="pending") # pending, accepted, rejected
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # İlişkiler (Bilgi çekmek için)
+    project = relationship("Project")
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
