@@ -5,6 +5,8 @@ import 'package:flutter_app/screens/profil_page/profile_controller.dart';
 import 'package:flutter_app/screens/profil_page/profile_sub_pages.dart';
 import 'package:get_x/get.dart';
 
+import '../friends/friends_view.dart';
+
 
 
 class ProfileView extends StatelessWidget {
@@ -72,6 +74,7 @@ class ProfileView extends StatelessWidget {
             const SizedBox(height: 24),
 
             // --- YENİ: İSTATİSTİK BARI ---
+            // --- İSTATİSTİK BARI (GÜNCELLENMİŞ HALİ) ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
@@ -80,17 +83,56 @@ class ProfileView extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
-                    BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
                   ],
                 ),
                 child: Obx(() => Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
+                    // 1. Toplam Görev
                     _buildStatItem("Toplam Görev", controller.totalTasks.value.toString(), Colors.blue),
+
                     _buildVerticalDivider(),
+
+                    // 2. Tamamlanan Görev
                     _buildStatItem("Tamamlanan", controller.completedTasks.value.toString(), Colors.green),
+
                     _buildVerticalDivider(),
-                    _buildStatItem("Arkadaşlar", controller.friendsCount.value.toString(), Colors.orange),
+
+                    // 3. Arkadaşlar (Tıklanabilir ve Kırmızı Noktalı)
+                    GestureDetector(
+                      onTap: () {
+                        // Arkadaşlar Sayfasına Git
+                        Get.to(() => FriendsView());
+                      },
+                      child: Stack(
+                        clipBehavior: Clip.none, // Noktanın dışarı taşmasına izin ver
+                        alignment: Alignment.topRight,
+                        children: [
+                          _buildStatItem("Arkadaşlar", controller.friendsCount.value.toString(), Colors.orange),
+
+                          // Eğer bekleyen istek varsa Kırmızı Nokta göster
+                          if (controller.hasPendingRequests.value)
+                            Positioned(
+                              top: -2,
+                              right: 5,
+                              child: Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2), // Beyaz çerçeve
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ],
                 )),
               ),

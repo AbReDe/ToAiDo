@@ -22,6 +22,7 @@ class ProfileController extends GetxController {
   var friendsCount = 0.obs;
 
   var isLoading = false.obs;
+  var hasPendingRequests = false.obs;
 
   @override
   void onInit() {

@@ -68,3 +68,15 @@ class Task(Base):
 
     owner = relationship("User", back_populates="tasks")
     project = relationship("Project", back_populates="tasks")
+
+
+
+    # --- ARKADAŞLIK TABLOSU ---
+class Friendship(Base):
+    __tablename__ = "friendships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"))   # İsteği gönderen
+    receiver_id = Column(Integer, ForeignKey("users.id")) # İsteği alan
+    status = Column(String, default="pending") # pending (bekliyor), accepted (kabul), rejected (red)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -115,3 +115,20 @@ class UserProfile(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+
+
+        # --- ARKADAŞLIK ŞEMALARI ---
+
+# Arkadaş Listesi Öğesi
+class FriendResponse(BaseModel):
+    id: int         # Arkadaşlık ID'si (Kabul/Red için lazım)
+    user_id: int    # Arkadaşın User ID'si
+    username: str
+    full_name: str
+    avatar_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
