@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 import models, database
-from routers import auth, tasks , users, projects, friends 
+from routers import auth, tasks , users, projects, friends , ai
 
 # Tabloları oluştur
 models.Base.metadata.create_all(bind=database.engine)
@@ -19,6 +19,7 @@ app.include_router(tasks.router)
 app.include_router(users.router) 
 app.include_router(projects.router) 
 app.include_router(friends.router) 
+app.include_router(ai.router)
 
 @app.get("/")
 def root():

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../models/task.dart';
 import '../AddTaskPage/add_task_view.dart';
 import '../ProjectPage/view/project_view.dart';
+import '../ai/ai_chat_view.dart';
 import '../profil_page/profile_view.dart';
 import 'home_controller.dart'; // Tarih formatlama
 
@@ -49,7 +50,7 @@ class HomeView extends StatelessWidget {
         else if (controller.selectedIndex.value == 1) {
           return ProjectView();
         } else if (controller.selectedIndex.value == 2) {
-          return const Center(child: Text("AI Sohbet Ekranı (Yakında)"));
+          return AIChatView();
         } else {
           return ProfileView();
         }

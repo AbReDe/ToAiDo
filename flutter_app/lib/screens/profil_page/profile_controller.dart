@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:get_x/get.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../models/user_profile_model.dart';
 import '../../services/auth_service.dart';
@@ -11,9 +12,10 @@ class ProfileController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final UserService _userService = Get.put(UserService());
 
-  // --- EKSİK OLAN 'ID' DEĞİŞKENİNİ BURAYA EKLİYORUZ ---
-  var id = 0.obs; // Kullanıcının ID'si
-  // ----------------------------------------------------
+
+  var id = 0.obs;
+  final TextEditingController apiKeyController = TextEditingController();
+  final _storage = const FlutterSecureStorage();
 
   var username = "...".obs;
   var email = "...".obs;
@@ -31,6 +33,51 @@ class ProfileController extends GetxController {
   super.onInit();
   loadUserProfile();
   }
+
+
+  void showApiKeyDialog() async {
+    // Mevcut key'i oku
+    String? currentKey = await _storage.read(key: 'gemini_api_key');
+    apiKeyController.text = currentKey ?? "";
+
+    Get.defaultDialog(
+      title: "AI Ayarları",
+      titleStyle: const TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.bold),
+      content: Column(
+        children: [
+          const Text(
+            "Gemini API Anahtarınızı giriniz. Bu anahtar sadece telefonunuzda saklanır.",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 15),
+          TextField(
+            controller: apiKeyController,
+            decoration: const InputDecoration(
+              labelText: "Gemini API Key",
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.key),
+            ),
+            obscureText: true, // Şifreli gibi görünsün
+          ),
+        ],
+      ),
+      textConfirm: "Kaydet",
+      textCancel: "İptal",
+      confirmTextColor: Colors.white,
+      buttonColor: const Color(0xFF1E3C72),
+      onConfirm: () async {
+        if (apiKeyController.text.isNotEmpty) {
+          await _storage.write(key: 'gemini_api_key', value: apiKeyController.text);
+          Get.back();
+          Get.snackbar("Başarılı", "API Anahtarı kaydedildi!",
+              backgroundColor: Colors.green, colorText: Colors.white);
+        }
+      },
+    );
+  }
+
+
 
   void loadUserProfile() async {
   isLoading.value = true;

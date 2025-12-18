@@ -14,7 +14,6 @@ class ProjectDetailView extends StatelessWidget {
   late final ProjectDetailController controller;
 
   ProjectDetailView({Key? key, required this.project}) : super(key: key) {
-    // Her proje için benzersiz bir controller oluşturuyoruz (Tag kullanarak)
     controller = Get.put(ProjectDetailController(project), tag: project.id.toString());
   }
 
@@ -46,8 +45,8 @@ class ProjectDetailView extends StatelessWidget {
         // GÖREV EKLEME BUTONU
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => _showAddTaskBottomSheet(context),
-          label: const Text("Görev Ekle"),
-          icon: const Icon(Icons.add),
+          label: const Text("Görev Ekle",style: TextStyle(color: Colors.white),),
+          icon: const Icon(Icons.add,color: Colors.white,),
           backgroundColor: const Color(0xFF1E3C72),
         ),
 

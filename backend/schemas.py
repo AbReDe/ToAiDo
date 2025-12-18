@@ -151,3 +151,16 @@ class ProjectInvitationResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+
+# --- AI (YAPAY ZEKA) ŞEMALARI ---
+class AIChatRequest(BaseModel):
+    message: str
+
+class AIGenerateRequest(BaseModel):
+    topic: str
+
+class AIGenerateResponse(BaseModel):
+    message: str
+    created_task_count: int

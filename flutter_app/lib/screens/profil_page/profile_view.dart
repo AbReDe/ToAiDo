@@ -165,6 +165,11 @@ class ProfileView extends StatelessWidget {
                     text: "Yardım ve Destek",
                     onTap: () => Get.to(() => HelpView()),
                   ),
+                  _buildProfileMenuItem(
+                    icon: Icons.vpn_key_outlined, // Anahtar ikonu
+                    text: "AI API Ayarları",
+                    onTap: controller.showApiKeyDialog, // Diyaloğu açar
+                  ),
                   const SizedBox(height: 20),
                   _buildProfileMenuItem(
                     icon: Icons.logout,
