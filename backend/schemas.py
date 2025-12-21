@@ -44,6 +44,7 @@ class Token(BaseModel):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
+    gemini_api_key: Optional[str] = None
 
 class UserProfile(BaseModel):
     id: int
@@ -53,6 +54,7 @@ class UserProfile(BaseModel):
     total_tasks: int
     completed_tasks: int
     friends_count: int
+    gemini_api_key: Optional[str] = None 
 
     class Config:
         from_attributes = True
@@ -67,12 +69,20 @@ class TaskCreate(BaseModel):
     priority: str = "medium"
     status: Optional[str] = "Yapılacak"
     due_date: Optional[datetime] = None
+    
+    # --- YENİ ---
+    repeat: Optional[str] = "none"
+    tags: List[str] = [] 
+    # ------------
 
+# Görev güncellerken
 class TaskUpdate(BaseModel):
     status: Optional[str] = None
     title: Optional[str] = None
     priority: Optional[str] = None
+    # Güncelleme için de eklenebilir ama şimdilik gerek yok
 
+# Frontend'e göndereceğimiz veri formatı
 class TaskResponse(BaseModel):
     id: int
     title: str
@@ -80,17 +90,21 @@ class TaskResponse(BaseModel):
     status: str
     priority: str
     due_date: Optional[datetime]
+   
     
+    # --- YENİ ---
+    repeat: Optional[str] = "none"
+    tags: List[str] = []
+    # ------------
+    completed_dates: List[str] = []
     owner_id: Optional[int] = None
     project_id: Optional[int] = None
-    
-    # UserBasicInfo artık yukarıda tanımlı olduğu için hata vermeyecek
     owner: Optional[UserBasicInfo] = None 
-    
     created_at: datetime
 
     class Config:
         from_attributes = True
+
 
 # ===========================
 # --- PROJE (PROJECT) ŞEMALARI ---

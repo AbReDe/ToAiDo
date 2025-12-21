@@ -232,74 +232,171 @@ class HomeView extends StatelessWidget {
 
   // --- GÖREV KARTI (DÜZELTİLDİ) ---
   Widget _buildTaskCard(Task task, int index) {
-    bool isCompleted = task.status == "Tamamlandı"; // ['status'] yerine .status
+    // --- KRİTİK GÜNCELLEME: YENİ TAMAMLANMA MANTIĞI ---
+    // Seçili günün tarihini al (YYYY-MM-DD formatında)
+    String selectedDateStr = DateFormat('yyyy-MM-dd').format(controller.selectedDate.value);
+
+    // Görev tamamlandı mı?
+    // 1. completedDates listesinde bu tarih var mı? (Tekrarlı görevler için)
+    // 2. VEYA task.status "Tamamlandı" mı? (Eski usül tek seferlik görevler için yedek kontrol)
+    bool isCompleted = task.completedDates.contains(selectedDateStr) || task.status == "Tamamlandı";
+
+    // Öncelik Rengi Belirleme
+    Color priorityColor;
+    switch (task.priority) {
+      case 'high': priorityColor = Colors.redAccent; break;
+      case 'medium': priorityColor = Colors.orange; break;
+      case 'low': priorityColor = Colors.green; break;
+      default: priorityColor = Colors.grey;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
         ],
       ),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: () => controller.toggleTaskStatus(index),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              height: 28,
-              width: 28,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isCompleted ? Colors.green : Colors.transparent,
-                border: Border.all(
-                  color: isCompleted ? Colors.green : const Color(0xFF1E3C72),
-                  width: 2,
-                ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight( // Yükseklikleri eşitlemek için
+          child: Row(
+            children: [
+              // 1. ÖNCELİK ÇİZGİSİ (SOLDAKİ RENKLİ ŞERİT)
+              Container(
+                width: 6,
+                color: priorityColor,
               ),
-              child: isCompleted
-                  ? const Icon(Icons.check, size: 18, color: Colors.white)
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // BAŞLIK
-                Text(
-                  task.title, // ['title'] yerine .title
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    decoration: isCompleted ? TextDecoration.lineThrough : null,
-                    color: isCompleted ? Colors.grey : Colors.black87,
+
+              // 2. İÇERİK
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // --- PROJE ETİKETİ (Varsa) ---
+                      if (task.projectId != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          margin: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.folder_outlined, size: 12, color: Color(0xFF1E3C72)),
+                              SizedBox(width: 4),
+                              Text(
+                                  "Proje Görevi",
+                                  style: TextStyle(fontSize: 10, color: Color(0xFF1E3C72), fontWeight: FontWeight.bold)
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // BAŞLIK VE TOGGLE BUTONU
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap: () => controller.toggleTaskStatus(index),
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 10),
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: isCompleted ? Colors.green : Colors.grey,
+                                    width: 2
+                                ),
+                                color: isCompleted ? Colors.green : null,
+                              ),
+                              child: isCompleted
+                                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                                  : const SizedBox(width: 14, height: 14),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                decoration: isCompleted ? TextDecoration.lineThrough : null,
+                                color: isCompleted ? Colors.grey : Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      // SAAT VE TEKRAR BİLGİSİ
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 12, color: Colors.grey.shade500),
+                          const SizedBox(width: 4),
+                          Text(
+                            task.dueDate != null
+                                ? DateFormat('HH:mm').format(task.dueDate!)
+                                : "--:--",
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                          ),
+
+                          const SizedBox(width: 10),
+
+                          // Tekrar Bilgisi (Varsa göster)
+                          if (task.repeat != null && task.repeat != "none")
+                            Row(
+                              children: [
+                                Icon(Icons.repeat, size: 12, color: Colors.grey.shade500),
+                                const SizedBox(width: 4),
+                                Text(
+                                  task.repeat == 'daily' ? 'Her Gün' :
+                                  (task.repeat == 'weekly' ? 'Haftalık' : 'Aylık'),
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+
+                      // --- TAGLER (CHIPS) ---
+                      if (task.tags.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: task.tags.map((tag) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Text(
+                              "#$tag",
+                              style: TextStyle(fontSize: 10, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+                            ),
+                          )).toList(),
+                        )
+                      ]
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                // SAAT
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
-                    const SizedBox(width: 4),
-                    Text(
-                      // Tarih null değilse formatla, null ise boş bırak
-                      task.dueDate != null
-                          ? DateFormat('HH:mm').format(task.dueDate!)
-                          : "--:--",
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -15,6 +15,19 @@ class TaskService extends GetConnect {
     httpClient.timeout = const Duration(seconds: 10);
   }
 
+
+  Future<bool> toggleTaskDate(int taskId, String date) async {
+    try {
+      final headers = await _getHeaders();
+      // Query param olarak gönderiyoruz: ?date=2025-12-21
+      final response = await put('/tasks/$taskId/toggle_date?date=$date', {}, headers: headers);
+      return !response.status.hasError;
+    } catch (e) {
+      return false;
+    }
+  }
+
+
   // --- TOKEN ALAN YARDIMCI FONKSİYON ---
   Future<Map<String, String>> _getHeaders() async {
     String? token = await _storage.read(key: 'jwt_token');

@@ -120,13 +120,40 @@ def respond_invitation(invite_id: int, action: str, db: Session = Depends(get_db
     return {"message": "İşlem başarısız"}
 
 # --- GÖREVLER (Eski kodlar aynı kalıyor) ---
-@router.get("/{project_id}/tasks", response_model=List[schemas.TaskResponse])
-def get_project_tasks(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@router.post("/{project_id}/tasks", response_model=schemas.TaskResponse)
+def create_project_task(
+    project_id: int,
+    task: schemas.TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
-    # Yetki kontrolü: Sahibi veya Üyesi
-    if not project or (project.owner_id != current_user.id and current_user not in project.members):
-         raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
-    return project.tasks
+    
+    if not project:
+         raise HTTPException(status_code=404, detail="Proje bulunamadı")
+    
+    # Yetki kontrolü (kısa versiyon)
+    if project.owner_id != current_user.id and current_user not in project.members:
+         raise HTTPException(status_code=403, detail="Yetkiniz yok")
+
+    new_task = models.Task(
+        title=task.title,
+        description=task.description,
+        status="Yapılacak",
+        priority=task.priority,
+        due_date=task.due_date,
+        project_id=project_id,
+        owner_id=None,
+        
+        # --- YENİ ALANLAR ---
+        repeat=task.repeat,
+        tags=task.tags
+        # --------------------
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return new_task
 
 @router.post("/{project_id}/tasks", response_model=schemas.TaskResponse)
 def create_project_task(project_id: int, task: schemas.TaskCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -155,12 +182,33 @@ def get_project_members(
     if not project:
         raise HTTPException(status_code=404, detail="Proje bulunamadı")
     
-    # Erişim kontrolü: Sahibi mi veya üyesi mi?
+    # Erişim kontrolü
     if project.owner_id != current_user.id and current_user not in project.members:
          raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
 
-    # Listeyi oluştur: Proje Sahibi + Diğer Üyeler
+    # Listeyi oluştur: [Sahip] + [Diğer Üyeler]
+    # Set kullanarak aynı kişinin iki kere listede olmasını engelliyoruz
     all_members = [project.owner] + project.members
     
-    # Tekrarları önlemek için (bazı durumlarda duplicate olmasın diye)
-    return list(set(all_members))
+    # User objelerini ID'lerine göre benzersiz yapıyoruz
+    unique_members = {user.id: user for user in all_members}.values()
+    
+    return list(unique_members)
+
+
+@router.get("/{project_id}/tasks", response_model=List[schemas.TaskResponse])
+def get_project_tasks(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    
+    if not project:
+        raise HTTPException(status_code=404, detail="Proje bulunamadı")
+        
+    # Erişim kontrolü
+    if project.owner_id != current_user.id and current_user not in project.members:
+         raise HTTPException(status_code=403, detail="Erişim yetkiniz yok")
+
+    return project.tasks

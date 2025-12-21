@@ -18,18 +18,29 @@ def get_tasks(db: Session = Depends(get_db), current_user: models.User = Depends
 
 # 2. Görev Ekle
 @router.post("/", response_model=schemas.TaskResponse)
-def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def create_task(
+    task: schemas.TaskCreate, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
     new_task = models.Task(
         title=task.title,
         description=task.description,
         priority=task.priority,
         due_date=task.due_date,
-        owner_id=current_user.id
+        status="Yapılacak",
+        owner_id=current_user.id,
+        
+        # --- YENİ ALANLARI KAYDET ---
+        repeat=task.repeat,
+        tags=task.tags
+        # ----------------------------
     )
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
     return new_task
+
 
 # 3. Görev Sil
 @router.delete("/{task_id}")
@@ -99,6 +110,37 @@ def complete_task(task_id: int, db: Session = Depends(get_db), current_user: mod
         raise HTTPException(status_code=404, detail="Görev bulunamadı")
 
     task.status = "Tamamlandı"
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.put("/{task_id}/toggle_date")
+def toggle_task_date(
+    task_id: int, 
+    date: str, # Format: "YYYY-MM-DD"
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Görev bulunamadı")
+
+    # Mevcut listeyi al (SQLAlchemy JSON listesini bazen kopyalamak gerekir)
+    dates = list(task.completed_dates) if task.completed_dates else []
+
+    if date in dates:
+        dates.remove(date) # Varsa çıkar (Geri al)
+    else:
+        dates.append(date) # Yoksa ekle (Yapıldı)
+    
+    # Listeyi güncelle
+    task.completed_dates = dates
+    
+    # Eğer bu normal bir görevse (tekrar yoksa) ve tarih eklendiyse status'u da güncelle
+    if task.repeat == "none":
+        task.status = "Tamamlandı" if dates else "Yapılacak"
+
     db.commit()
     db.refresh(task)
     return task

@@ -2,11 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:get_x/get.dart';
-
 import 'package:intl/intl.dart';
-
 import 'add_task_controller.dart';
-
 
 class AddTaskView extends StatelessWidget {
   final AddTaskController controller = Get.put(AddTaskController());
@@ -18,168 +15,157 @@ class AddTaskView extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        title: const Text("Yeni Görev", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black),
-          onPressed: () => Get.back(),
-        ),
-        title: const Text(
-          "Yeni Görev",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- BAŞLIK BAŞLIĞI ---
-            const Text("Başlık", style: TextStyle(color: Colors.grey, fontSize: 14)),
-            const SizedBox(height: 8),
+            // BAŞLIK
+            const Text("Başlık", style: TextStyle(color: Colors.grey)),
             TextField(
               controller: controller.titleController,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                hintText: "Örn: Backend API Tasarımı",
-                hintStyle: TextStyle(color: Colors.grey.shade400),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+              decoration: const InputDecoration(hintText: "Görev adı..."),
             ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 24),
-
-            // --- AÇIKLAMA ---
-            const Text("Açıklama (Opsiyonel)", style: TextStyle(color: Colors.grey, fontSize: 14)),
-            const SizedBox(height: 8),
+            // AÇIKLAMA
+            const Text("Açıklama", style: TextStyle(color: Colors.grey)),
             TextField(
               controller: controller.descController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: "Detayları buraya yaz...",
-                hintStyle: TextStyle(color: Colors.grey.shade400),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+              maxLines: 2,
+              decoration: const InputDecoration(hintText: "Detaylar..."),
             ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 24),
-
-            // --- TARİH VE SAAT SEÇİMİ (Yan Yana) ---
+            // ETİKETLER (TAG)
+            const Text("Etiketler (Tag)", style: TextStyle(color: Colors.grey)),
             Row(
               children: [
-                // Tarih Kısmı
                 Expanded(
+                  child: TextField(
+                    controller: controller.tagController,
+                    decoration: const InputDecoration(hintText: "Örn: yazılım, spor..."),
+                    onSubmitted: (_) => controller.addTag(),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle, color: Color(0xFF1E3C72)),
+                  onPressed: controller.addTag,
+                )
+              ],
+            ),
+            const SizedBox(height: 10),
+            Obx(() => Wrap(
+              spacing: 8,
+              children: controller.tags.map((tag) => Chip(
+                label: Text("#$tag"),
+                backgroundColor: Colors.blue.shade50,
+                deleteIcon: const Icon(Icons.close, size: 18),
+                onDeleted: () => controller.removeTag(tag),
+              )).toList(),
+            )),
+
+            const SizedBox(height: 20),
+
+            // ZAMAN VE TEKRAR
+            Row(
+              children: [
+                // Tarih ve Saat
+                Expanded(
+                  flex: 3,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Tarih", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => controller.pickDate(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
+                      const Text("Zaman", style: TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 5),
+                      Wrap(
+                        spacing: 10,
+                        children: [
+                          // Tarih Seçici
+                          Obx(() {
+                            bool isRepeat = controller.selectedRepeat.value != "none";
+                            return ActionChip(
+                              avatar: Icon(Icons.calendar_today, size: 16, color: isRepeat ? Colors.grey : const Color(0xFF1E3C72)),
+                              label: Text(
+                                isRepeat ? "Bugünden başla" : DateFormat('dd/MM').format(controller.selectedDate.value),
+                                style: TextStyle(color: isRepeat ? Colors.grey : Colors.black),
+                              ),
+                              onPressed: isRepeat ? null : () => controller.pickDate(context),
+                            );
+                          }),
+                          // Saat Seçici
+                          ActionChip(
+                            avatar: const Icon(Icons.access_time, size: 16, color: Color(0xFF1E3C72)),
+                            label: Obx(() => Text(controller.selectedTime.value.format(context))),
+                            onPressed: () => controller.pickTime(context),
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_today, color: Color(0xFF1E3C72), size: 20),
-                              const SizedBox(width: 8),
-                              Obx(() => Text(
-                                DateFormat('dd/MM/yyyy').format(controller.selectedDate.value),
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              )),
-                            ],
-                          ),
-                        ),
-                      ),
+                        ],
+                      )
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                // Saat Kısmı
+
+                const SizedBox(width: 10),
+
+                // --- TEKRAR SEÇİMİ (BURASI EKSİKTİ, EKLENDİ) ---
                 Expanded(
+                  flex: 2,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Saat", style: TextStyle(color: Colors.grey, fontSize: 14)),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () => controller.pickTime(context),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.access_time, color: Color(0xFF1E3C72), size: 20),
-                              const SizedBox(width: 8),
-                              Obx(() => Text(
-                                controller.selectedTime.value.format(context),
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              )),
-                            ],
-                          ),
+                      const Text("Tekrar", style: TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 5),
+                      Obx(() => DropdownButtonFormField<String>(
+                        value: controller.selectedRepeat.value,
+                        isExpanded: true,
+                        items: const [
+                          DropdownMenuItem(value: "none", child: Text("Yok", style: TextStyle(fontSize: 13))),
+                          DropdownMenuItem(value: "daily", child: Text("Her Gün", style: TextStyle(fontSize: 13))),
+                          DropdownMenuItem(value: "weekly", child: Text("Haftalık", style: TextStyle(fontSize: 13))),
+                        ],
+                        onChanged: controller.setRepeat,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                      ),
+                      )),
                     ],
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // --- ÖNCELİK (PRIORITY) ---
-            const Text("Öncelik", style: TextStyle(color: Colors.grey, fontSize: 14)),
-            const SizedBox(height: 12),
+            // ÖNCELİK
+            const Text("Öncelik", style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 10),
             Obx(() => Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildPriorityChip("Düşük", "low", Colors.green),
-                _buildPriorityChip("Orta", "medium", Colors.orange),
-                _buildPriorityChip("Yüksek", "high", Colors.redAccent),
+                _priorityOption("Düşük", "low", Colors.green),
+                _priorityOption("Orta", "medium", Colors.orange),
+                _priorityOption("Yüksek", "high", Colors.redAccent),
               ],
             )),
 
             const SizedBox(height: 40),
 
-            // --- OLUŞTUR BUTONU ---
+            // KAYDET BUTONU
             SizedBox(
               width: double.infinity,
-              height: 55,
-              child: Obx(() => ElevatedButton(
-                onPressed: controller.isLoading.value ? null : controller.saveTask,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3C72),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 5,
-                ),
-                child: controller.isLoading.value
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                  "GÖREV OLUŞTUR",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              )),
+              height: 50,
+              child: ElevatedButton(
+                onPressed: controller.saveTask,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3C72)),
+                child: const Text("GÖREVİ KAYDET", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
@@ -187,8 +173,7 @@ class AddTaskView extends StatelessWidget {
     );
   }
 
-  // Öncelik Butonu Widget'ı
-  Widget _buildPriorityChip(String label, String value, Color color) {
+  Widget _priorityOption(String label, String value, Color color) {
     bool isSelected = controller.selectedPriority.value == value;
     return GestureDetector(
       onTap: () => controller.setPriority(value),
@@ -197,22 +182,10 @@ class AddTaskView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? color : Colors.white,
+          border: Border.all(color: isSelected ? color : Colors.grey.shade300),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
-            width: isSelected ? 0 : 1.5,
-          ),
-          boxShadow: isSelected
-              ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))]
-              : [],
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.bold)),
       ),
     );
   }

@@ -3,7 +3,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
 
 import '../../models/chat_message_model.dart';
-import '../../services/ai_service.dart'; // <-- Eklendi
+import '../../models/user_profile_model.dart';
+import '../../services/ai_service.dart';
+import '../../services/user_service.dart'; // <-- Eklendi
 
 
 class AIController extends GetxController {
@@ -12,6 +14,7 @@ class AIController extends GetxController {
 
   final TextEditingController textCtrl = TextEditingController();
   final ScrollController scrollCtrl = ScrollController();
+  final UserService _userService = Get.put(UserService());
 
   var messages = <ChatMessage>[].obs;
   var isLoading = false.obs;
@@ -29,30 +32,34 @@ class AIController extends GetxController {
 
   // --- API KEY KONTROLÜ VE KARŞILAMA ---
   void checkApiKeyAndWelcome() async {
-    String? key = await _storage.read(key: 'gemini_api_key');
+    // 1. Önce Profili Çekiyoruz (Veritabanına bakıyoruz)
+    UserProfile? profile = await _userService.getMyProfile();
 
-    if (key == null || key.isEmpty) {
-      hasApiKey.value = false;
-
-      // 1. Önce kullanıcıya uyarı mesajı ekle
-      messages.add(ChatMessage(
-        text: "Merhaba! 👋 Ben ToAiDo Asistan.\n\n⚠️ Şu an API Anahtarın girili değil. Bu yüzden sadece basit (Mock) cevaplar verebilirim.\n\nGerçek yapay zeka deneyimi için lütfen API anahtarını gir.",
-        isUser: false,
-        time: DateTime.now(),
-      ));
-
-      // 2. Otomatik olarak API Key girme penceresini aç
-      Future.delayed(const Duration(milliseconds: 500), () {
-        showApiKeyDialog();
-      });
-
-    } else {
+    // 2. Profilde key var mı?
+    if (profile != null && profile.geminiApiKey != null && profile.geminiApiKey!.isNotEmpty) {
       hasApiKey.value = true;
+      // Key'i servisin kullanabilmesi için yerel hafızaya geri yazalım (Caching)
+      // Bu sayede AI Service her seferinde profile gitmek zorunda kalmaz
+      await _storage.write(key: 'gemini_api_key', value: profile.geminiApiKey);
+
       messages.add(ChatMessage(
-        text: "Merhaba! Ben ToAiDo Asistan. 🧠\nGemini AI aktif. Sana nasıl yardımcı olabilirim?",
+        text: "Merhaba ${profile.username}! 🧠\nAPI Anahtarın doğrulandı. Sana nasıl yardımcı olabilirim?",
         isUser: false,
         time: DateTime.now(),
       ));
+    }
+    else {
+      // Key Yoksa
+      hasApiKey.value = false;
+      await _storage.delete(key: 'gemini_api_key'); // Varsa sil
+
+      messages.add(ChatMessage(
+        text: "Merhaba! 👋\n\n⚠️ Sistemde kayıtlı API Anahtarın bulunamadı.\nLütfen 'AI API Ayarları' butonuna basarak anahtarını kaydet.",
+        isUser: false,
+        time: DateTime.now(),
+      ));
+
+      // Otomatik açılması yerine kullanıcı butona bassın (Daha az rahatsız edici)
     }
   }
 
@@ -61,65 +68,44 @@ class AIController extends GetxController {
     final TextEditingController keyInput = TextEditingController();
 
     Get.defaultDialog(
-        title: "API Anahtarı Gerekli",
-        titleStyle: const TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.bold),
-        content: Column(
-          children: [
-            const Icon(Icons.vpn_key, size: 40, color: Colors.orangeAccent),
-            const SizedBox(height: 10),
-            const Text(
-              "Yapay zekayı tam kapasite kullanmak için Google Gemini API anahtarınızı giriniz.",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: keyInput,
-              decoration: const InputDecoration(
-                labelText: "API Key Yapıştır",
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () async {
-                // Google AI Studio linkini açmak için url_launcher kullanılabilir
-                // Şimdilik sadece bilgi verelim
-                Get.snackbar("Bilgi", "aistudio.google.com adresinden ücretsiz alabilirsiniz.",
-                    backgroundColor: Colors.black87, colorText: Colors.white, snackPosition: SnackPosition.top);
-              },
-              child: const Text("Anahtarım yok, nasıl alırım?", style: TextStyle(fontSize: 12)),
-            )
-          ],
-        ),
-        textConfirm: "Kaydet",
-        textCancel: "Daha Sonra",
-        confirmTextColor: Colors.white,
-        buttonColor: const Color(0xFF1E3C72),
-        onConfirm: () async {
-          if (keyInput.text.isNotEmpty) {
-            await _storage.write(key: 'gemini_api_key', value: keyInput.text.trim());
-            hasApiKey.value = true;
-            Get.back(); // Diyaloğu kapat
+      title: "API Anahtarı",
+      content: Column(
+        children: [
+          const Text("Gemini API Anahtarını gir ve sunucuya kaydet.", textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: keyInput,
+            decoration: const InputDecoration(labelText: "API Key", border: OutlineInputBorder()),
+          ),
+        ],
+      ),
+      textConfirm: "Kaydet",
+      textCancel: "İptal",
+      confirmTextColor: Colors.white,
+      buttonColor: const Color(0xFF1E3C72),
+      onConfirm: () async {
+        if (keyInput.text.isNotEmpty) {
+          Get.back(); // Diyaloğu kapat
 
-            Get.snackbar("Süper!", "API Anahtarı kaydedildi. Artık yapay zeka aktif! 🚀",
+          // Sunucuya Kaydet (UserService kullanıyoruz)
+          bool success = await _userService.updateProfile(
+              apiKey: keyInput.text.trim()
+          );
+
+          if (success) {
+            hasApiKey.value = true;
+            // Yerel hafızaya da yazalım ki anında kullanılsın
+            await _storage.write(key: 'gemini_api_key', value: keyInput.text.trim());
+
+            Get.snackbar("Başarılı", "Anahtar sunucuya ve cihaza kaydedildi! ✅",
                 backgroundColor: Colors.green, colorText: Colors.white);
 
-            // Teşekkür mesajı ekle
-            messages.add(ChatMessage(
-                text: "Teşekkürler! Anahtar kaydedildi. Artık her şeyi sorabilirsin. 🚀",
-                isUser: false,
-                time: DateTime.now()
-            ));
+            messages.add(ChatMessage(text: "Anahtar kaydedildi! Hazırım. 🚀", isUser: false, time: DateTime.now()));
           } else {
-            Get.snackbar("Hata", "Lütfen geçerli bir anahtar girin.", backgroundColor: Colors.red, colorText: Colors.white);
+            Get.snackbar("Hata", "Sunucuya kaydedilemedi.");
           }
-        },
-        onCancel: () {
-          // İptal ederse Mock modda devam edebilir
-          Get.snackbar("Uyarı", "Mock (Taklit) modunda devam ediliyor.", backgroundColor: Colors.orange, colorText: Colors.white);
         }
+      },
     );
   }
 

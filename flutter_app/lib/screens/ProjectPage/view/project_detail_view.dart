@@ -225,68 +225,93 @@ class ProjectDetailView extends StatelessWidget {
 
   // --- SEKME 2: EKİP ---
   Widget _buildTeamTab(BuildContext context) {
-    return Column(
-      children: [
-        // Davet Kartı
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
-          ),
-          child: Column(
-            children: [
-              const Icon(Icons.group_add, size: 40, color: Color(0xFF1E3C72)),
-              const SizedBox(height: 10),
-              const Text("Ekibini Büyüt", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 5),
-              const Text("Arkadaşlarını projeye davet ederek görevleri paylaşabilirsin.", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 15),
-              ElevatedButton(
-                onPressed: () => _showInviteDialog(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E3C72),
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    return RefreshIndicator(
+      onRefresh: () async {
+        // Aşağı çekince üyeleri tekrar çek
+        await controller.fetchMembers();
+      },
+      child: Column(
+        children: [
+          // Davet Kartı
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.group_add, size: 40, color: Color(0xFF1E3C72)),
+                const SizedBox(height: 10),
+                const Text("Ekibini Büyüt", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ElevatedButton(
+                  onPressed: () => _showInviteDialog(),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3C72)),
+                  child: const Text("Arkadaş Davet Et", style: TextStyle(color: Colors.white)),
                 ),
-                child: const Text("Arkadaş Davet Et", style: TextStyle(color: Colors.white)),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
 
-        // Üye Listesi Başlığı
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text("Proje Üyeleri", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Align(alignment: Alignment.centerLeft, child: Text("Proje Üyeleri", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
           ),
-        ),
 
-        // Üye Listesi (Mock Veri - İleride API'den gelecek)
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: const [
-              Card(
-                child: ListTile(
-                  leading: CircleAvatar(backgroundColor: Color(0xFF1E3C72), child: Text("S", style: TextStyle(color: Colors.white))),
-                  title: Text("Sen (Yönetici)"),
-                  subtitle: Text("Online"),
-                  trailing: Icon(Icons.shield, color: Colors.blue),
-                ),
-              ),
-              // Backend 'getProjectMembers' endpoint'i yazılınca burası dolacak
-            ],
+          // Üye Listesi
+          Expanded(
+            child: Obx(() {
+              if (controller.members.isEmpty) {
+                return const Center(child: Text("Yükleniyor..."));
+              }
+
+              return ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(), // RefreshIndicator için gerekli
+                padding: const EdgeInsets.all(16),
+                itemCount: controller.members.length,
+                itemBuilder: (context, index) {
+                  var member = controller.members[index];
+
+                  // Yönetici kim?
+                  bool isOwner = member.id == project.ownerId;
+                  // Ben miyim?
+                  bool isMe = member.id == controller.currentUserId.value;
+
+                  return Card(
+                    elevation: 1,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: isOwner ? const Color(0xFF1E3C72) : Colors.orangeAccent,
+                        child: Text(
+                          member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : "?",
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      title: Text(
+                        // Kendimsem "Sen", değilsem ismini yaz
+                        isMe ? "Sen (${isOwner ? 'Yönetici' : 'Üye'})" : member.fullName,
+                        style: TextStyle(fontWeight: isMe ? FontWeight.bold : FontWeight.normal),
+                      ),
+                      subtitle: Text("@${member.username}"),
+                      trailing: isOwner
+                          ? const Chip(label: Text("Lider", style: TextStyle(fontSize: 10, color: Colors.white)), backgroundColor: Color(0xFF1E3C72))
+                          : null,
+                    ),
+                  );
+                },
+              );
+            }),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
+
 
   // --- DAVET DİYALOĞU ---
   void _showInviteDialog() {
@@ -326,6 +351,15 @@ class ProjectDetailView extends StatelessWidget {
 
   // --- GÖREV EKLEME PANELİ (BOTTOM SHEET) ---
   void _showAddTaskBottomSheet(BuildContext context) {
+    // Controller'ları BURADA YEREL OLARAK tanımlıyoruz
+    final TextEditingController localTitleCtrl = TextEditingController();
+    final TextEditingController localDescCtrl = TextEditingController();
+
+    // Tarihleri bugüne sıfırla
+    controller.selectedDate.value = DateTime.now();
+    controller.selectedTime.value = TimeOfDay.now();
+    controller.selectedPriority.value = "medium";
+
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(24),
@@ -345,7 +379,7 @@ class ProjectDetailView extends StatelessWidget {
 
               // Başlık
               TextField(
-                controller: controller.titleCtrl,
+                controller: localTitleCtrl, // Yerel controller kullanılıyor
                 decoration: InputDecoration(
                   labelText: "Görev Başlığı",
                   prefixIcon: const Icon(Icons.title),
@@ -358,7 +392,7 @@ class ProjectDetailView extends StatelessWidget {
 
               // Açıklama
               TextField(
-                controller: controller.descCtrl,
+                controller: localDescCtrl, // Yerel controller kullanılıyor
                 maxLines: 2,
                 decoration: InputDecoration(
                   labelText: "Açıklama (Opsiyonel)",
@@ -370,7 +404,7 @@ class ProjectDetailView extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Tarih ve Saat
+              // Tarih ve Saat (Aynı kalıyor)
               Row(
                 children: [
                   Expanded(
@@ -429,7 +463,10 @@ class ProjectDetailView extends StatelessWidget {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: controller.saveTask,
+                  onPressed: () {
+                    // Verileri yerel controllerlardan alıp ana controller'a gönderiyoruz
+                    controller.saveTask(localTitleCtrl.text, localDescCtrl.text);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1E3C72),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -438,12 +475,12 @@ class ProjectDetailView extends StatelessWidget {
                   child: const Text("GÖREVİ EKLE", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(height: 20), // Klavye payı
+              const SizedBox(height: 20),
             ],
           ),
         ),
       ),
-      isScrollControlled: true, // Tam ekran açılmasına izin ver
+      isScrollControlled: true,
     );
   }
 

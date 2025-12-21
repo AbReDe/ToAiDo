@@ -40,10 +40,33 @@ class HomeController extends GetxController {
 
   // --- TARİHE GÖRE FİLTRELEME ---
   void filterTasksByDate(DateTime date) {
-    // Backend'den gelen tarih ile seçilen tarihi karşılaştır
     taskList.value = _allTasks.where((task) {
+      // 1. Tarih boşsa gösterme
       if (task.dueDate == null) return false;
-      return isSameDay(task.dueDate!, date);
+
+      // 2. Normal Görev: Seçilen tarihle görevin tarihi aynı mı?
+      bool isSameDate = isSameDay(task.dueDate!, date);
+
+      // 3. Tekrarlı Görev Mantığı
+      bool isRecurring = false;
+
+      if (task.repeat == 'daily') {
+        // Günlükse: Görevin başlangıç tarihi, seçilen tarihten önce veya aynıysa göster
+        // (Gelecekte başlayacak bir görevi bugünden gösterme)
+        if (task.dueDate!.isBefore(date) || isSameDay(task.dueDate!, date)) {
+          isRecurring = true;
+        }
+      }
+      else if (task.repeat == 'weekly') {
+        // Haftalıkse: Haftanın günü (Pazartesi=1, Salı=2...) aynı mı?
+        if ((task.dueDate!.isBefore(date) || isSameDay(task.dueDate!, date)) &&
+            task.dueDate!.weekday == date.weekday) {
+          isRecurring = true;
+        }
+      }
+
+      // Sonuç: Ya tarihi tutacak YA DA tekrar kuralına uyacak
+      return isSameDate || isRecurring;
     }).toList();
   }
 
@@ -53,18 +76,19 @@ class HomeController extends GetxController {
     filterTasksByDate(selected); // Tekrar istek atma, elindekileri filtrele
   }
 
-  // --- DURUM GÜNCELLEME (TOGGLE) ---
+
+  // GÖREV DURUMU DEĞİŞTİR
   void toggleTaskStatus(int index) async {
     var task = taskList[index];
-    String newStatus = task.status == "Tamamlandı" ? "Yapılacak" : "Tamamlandı";
 
-    // 1. Önce UI'da hızlıca güncelle (Kullanıcı beklemesin)
-    // Task sınıfı 'final' olduğu için kopyasını oluşturup değiştirmeliyiz (veya modeli final yapmayabilirsin)
-    // Şimdilik listeyi yeniden çekelim, en temizi:
+    // Seçili tarihi string formatına çevir (Backend'in beklediği format: YYYY-MM-DD)
+    String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate.value);
 
-    bool success = await _taskService.updateTaskStatus(task.id!, newStatus);
+    // Servise gönder
+    bool success = await _taskService.toggleTaskDate(task.id!, dateStr);
+
     if(success) {
-      fetchAllTasks(); // Verileri tazeleyelim
+      fetchAllTasks(); // Listeyi yenile ki güncel halini görelim
     }
   }
 

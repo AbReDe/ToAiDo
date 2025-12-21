@@ -11,15 +11,16 @@ router = APIRouter(
     tags=["Artificial Intelligence"]
 )
 
-# --- YARDIMCI FONKSİYON: HTTP İLE GEMINI (SENİN MODELLERİNLE) ---
+# --- YARDIMCI FONKSİYON: HTTP İLE GEMINI (AKILLI MODEL SEÇİCİ) ---
 def ask_gemini_http(api_key: str, prompt: str):
-    # SENİN LİSTENDEN SEÇTİĞİMİZ EN İYİ MODELLER (Sırasıyla deneyecek)
+    # Denenecek Modeller Listesi (En hızlı ve kotası bol olandan başlıyoruz)
     models_to_try = [
-        "gemini-2.0-flash",       # Listende var! Çok hızlı.
-        "gemini-2.5-flash",       # En yenisi!
+        "gemini-2.0-flash",       # Çok hızlı ve yeni
+        "gemini-2.5-flash",       # En güncel sürüm
+        "gemini-1.5-flash",       # Kararlı ve hızlı
         "gemini-flash-latest",    # Genel güncel flash
         "gemini-2.0-flash-exp",   # Deneysel
-        "gemini-2.5-pro"          # Daha zeki (Kota dolarsa diğerine geçer)
+        "gemini-1.5-pro"          # Daha zeki ama yavaş olabilir
     ]
     
     headers = {
@@ -37,10 +38,10 @@ def ask_gemini_http(api_key: str, prompt: str):
     # Modelleri sırayla dene
     for model in models_to_try:
         try:
-            # URL Yapısı: .../models/MODEL_ADI:generateContent
+            # URL Yapısı
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             
-            # Timeout 30 saniye (Yapay zeka bazen düşünür)
+            # Timeout 30 saniye
             response = requests.post(url, headers=headers, json=data, timeout=30)
             
             # 200 OK geldiyse cevabı al ve çık
@@ -54,10 +55,10 @@ def ask_gemini_http(api_key: str, prompt: str):
                     print(f"⚠️ Model '{model}' boş cevap döndürdü.")
                     continue # Diğer modele geç
 
-            # Hata geldiyse
+            # Hata geldiyse (429 Kota, 404 Bulunamadı vs.)
             else:
-                print(f"⚠️ Model '{model}' Hatası: {response.status_code} - {response.text}")
-                last_error = f"{model} Hatası: {response.status_code}"
+                print(f"⚠️ Model '{model}' Hatası: {response.status_code}")
+                last_error = f"{model}: {response.text}"
                 continue # Diğer modele geç
 
         except Exception as e:
@@ -65,7 +66,7 @@ def ask_gemini_http(api_key: str, prompt: str):
             continue
 
     # Hiçbiri çalışmadıysa
-    return f"Üzgünüm, şu an hiçbir modelden cevap alamadım. Lütfen API anahtarını kontrol et veya 1 dakika bekle. (Son Hata: {last_error})"
+    return f"Üzgünüm, şu an hiçbir yapay zeka modeline ulaşılamadı. Lütfen API anahtarını kontrol et veya kotan dolmuş olabilir. (Hata: {last_error})"
 
 # 1. SOHBET ET
 @router.post("/chat")
@@ -76,12 +77,15 @@ def chat_with_ai(
 ):
     user_msg = request.message
     
-    if x_gemini_api_key:
+    # 1. Önce Header'a bak, yoksa Veritabanına (User tablosuna) bak
+    api_key_to_use = x_gemini_api_key or current_user.gemini_api_key
+    
+    if api_key_to_use:
         system_prompt = f"Sen 'ToAiDo' asistanısın. Kullanıcı: {current_user.full_name}. Soru: {user_msg}"
-        ai_response = ask_gemini_http(x_gemini_api_key, system_prompt)
+        ai_response = ask_gemini_http(api_key_to_use, system_prompt)
         return {"response": ai_response}
 
-    return {"response": "API Anahtarı girilmedi. (Mock Cevap)"}
+    return {"response": "API Anahtarı bulunamadı. Lütfen profil ayarlarından ekleyin."}
 
 
 # 2. GÖREV OLUŞTURUCU
@@ -94,7 +98,10 @@ def generate_tasks_from_ai(
 ):
     topic = request.topic
     
-    if x_gemini_api_key:
+    # 1. Önce Header'a bak, yoksa Veritabanına bak
+    api_key_to_use = x_gemini_api_key or current_user.gemini_api_key
+    
+    if api_key_to_use:
         prompt = f"""
         Konu: '{topic}'.
         Bu konuyla ilgili yapılması gereken 5 somut görevi listele.
@@ -102,7 +109,7 @@ def generate_tasks_from_ai(
         Örnek: ["Görev 1", "Görev 2"]
         """
         
-        ai_text = ask_gemini_http(x_gemini_api_key, prompt)
+        ai_text = ask_gemini_http(api_key_to_use, prompt)
         
         if ai_text and "[" in ai_text:
             try:
@@ -115,22 +122,23 @@ def generate_tasks_from_ai(
 
                 task_titles = json.loads(cleaned_text)
                 
-                new_tasks = []
-                for i, title in enumerate(task_titles):
-                    new_task = models.Task(
+                new_task = models.Task(
                         title=title,
                         description=f"AI ({topic})",
                         priority="medium",
                         status="Yapılacak",
                         due_date=datetime.now() + timedelta(days=i),
-                        owner_id=current_user.id
+                        owner_id=current_user.id,
+                        
+                   
+                        repeat="none",
+                        tags=["AI"] 
+                       
                     )
-                    db.add(new_task)
-                    new_tasks.append(new_task)
                 
                 db.commit()
                 return {
-                    "message": f"Yapay Zeka, {len(new_tasks)} görev oluşturdu! 🚀",
+                    "message": f"Gemini, {len(new_tasks)} görev oluşturdu! 🚀",
                     "created_task_count": len(new_tasks)
                 }
             except Exception as e:

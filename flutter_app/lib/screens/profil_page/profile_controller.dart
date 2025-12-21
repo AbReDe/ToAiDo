@@ -1,110 +1,137 @@
-
 import 'package:flutter/material.dart';
-import 'package:get_x/get.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'package:get_x/get.dart';
 import '../../models/user_profile_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 
-
 class ProfileController extends GetxController {
+  // Servisleri Bağlıyoruz
   final AuthService _authService = Get.find<AuthService>();
+  // UserService'i put ile ekliyoruz ki hafızada oluşsun
   final UserService _userService = Get.put(UserService());
 
-
-  var id = 0.obs;
-  final TextEditingController apiKeyController = TextEditingController();
+  // Depolama ve Input Kontrolcüleri
   final _storage = const FlutterSecureStorage();
+  final TextEditingController apiKeyController = TextEditingController();
 
+  // --- UI GÜNCELLEYEN DEĞİŞKENLER (OBS) ---
+  var id = 0.obs;
   var username = "...".obs;
   var email = "...".obs;
   var fullName = "...".obs;
 
+  // İstatistikler
   var totalTasks = 0.obs;
   var completedTasks = 0.obs;
   var friendsCount = 0.obs;
+
+  // Kırmızı nokta (Bildirim)
   var hasPendingRequests = false.obs;
 
   var isLoading = false.obs;
 
   @override
   void onInit() {
-  super.onInit();
-  loadUserProfile();
+    super.onInit();
+    // Controller başlar başlamaz veriyi çek
+    print("📢 ProfileController Başlatıldı. Veriler çekiliyor...");
+    loadUserProfile();
   }
 
+  // --- 1. PROFİL BİLGİLERİNİ ÇEK ---
+  void loadUserProfile() async {
+    isLoading.value = true;
 
-  void showApiKeyDialog() async {
-    // Mevcut key'i oku
-    String? currentKey = await _storage.read(key: 'gemini_api_key');
-    apiKeyController.text = currentKey ?? "";
+    UserProfile? profile = await _userService.getMyProfile();
+
+    if (profile != null) {
+      id.value = profile.id;
+      username.value = profile.username;
+      email.value = profile.email;
+      fullName.value = profile.fullName ?? "";
+      totalTasks.value = profile.totalTasks;
+      completedTasks.value = profile.completedTasks;
+      friendsCount.value = profile.friendsCount;
+
+      // --- SENKRONİZASYON (KRİTİK) ---
+      // Backend'den key geldiyse, yerel hafızayı güncelle
+      if (profile.geminiApiKey != null && profile.geminiApiKey!.isNotEmpty) {
+        print("✅ Backend'den API Key geldi, hafızaya yazılıyor: ${profile.geminiApiKey}");
+        await _storage.write(key: 'gemini_api_key', value: profile.geminiApiKey);
+      } else {
+        print("⚠️ Backend'de API Key YOK (null).");
+      }
+      // -------------------------------
+    }
+
+    isLoading.value = false;
+  }
+
+  // --- 2. API KEY EKLEME DİYALOĞU ---
+  void showApiKeyDialog() {
+
 
     Get.defaultDialog(
       title: "AI Ayarları",
-      titleStyle: const TextStyle(color: Color(0xFF1E3C72), fontWeight: FontWeight.bold),
       content: Column(
         children: [
-          const Text(
-            "Gemini API Anahtarınızı giriniz. Bu anahtar sadece telefonunuzda saklanır.",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 15),
+          const Text("API Anahtarınız buluta kaydedilecektir.", style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 10),
           TextField(
             controller: apiKeyController,
             decoration: const InputDecoration(
               labelText: "Gemini API Key",
+              hintText: "AI Studio'dan aldığınız key",
               border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.key),
             ),
-            obscureText: true, // Şifreli gibi görünsün
           ),
         ],
       ),
-      textConfirm: "Kaydet",
+      textConfirm: "Sunucuya Kaydet",
       textCancel: "İptal",
       confirmTextColor: Colors.white,
       buttonColor: const Color(0xFF1E3C72),
       onConfirm: () async {
-        if (apiKeyController.text.isNotEmpty) {
-          await _storage.write(key: 'gemini_api_key', value: apiKeyController.text);
-          Get.back();
-          Get.snackbar("Başarılı", "API Anahtarı kaydedildi!",
+        if (apiKeyController.text.isEmpty) {
+          Get.snackbar("Hata", "Lütfen bir anahtar girin.");
+          return;
+        }
+
+        print("🖱️ Butona basıldı. Service çağrılıyor...");
+
+        // 1. Önce servise gönderiyoruz ve cevabı BEKLİYORUZ (await)
+        bool success = await _userService.updateProfile(
+            apiKey: apiKeyController.text.trim()
+        );
+
+        print("🔙 Controller'a dönen sonuç: $success");
+
+        if (success) {
+          Get.back(); // Diyaloğu kapat
+
+          // 2. Sadece sunucu kabul ederse yerel hafızaya yaz
+          await _storage.write(key: 'gemini_api_key', value: apiKeyController.text.trim());
+
+          Get.snackbar("Başarılı", "Anahtar sunucuya kaydedildi! ✅",
               backgroundColor: Colors.green, colorText: Colors.white);
+
+          // Profili yenile ki her şey güncellensin
+          loadUserProfile();
+        } else {
+          Get.snackbar("Hata", "Sunucuya bağlanılamadı veya hata oluştu.",
+              backgroundColor: Colors.red, colorText: Colors.white);
         }
       },
     );
   }
-
-
-
-  void loadUserProfile() async {
-  isLoading.value = true;
-
-  UserProfile? profile = await _userService.getMyProfile();
-
-  if (profile != null) {
-  // --- ID'Yİ KAYDETMEYİ UNUTMA ---
-  id.value = profile.id;
-  // -------------------------------
-
-  username.value = profile.username;
-  email.value = profile.email;
-  fullName.value = profile.fullName ?? "";
-
-  totalTasks.value = profile.totalTasks;
-  completedTasks.value = profile.completedTasks;
-  friendsCount.value = profile.friendsCount;
-  }
-
-  isLoading.value = false;
-  }
-
-  // --- PROFİL GÜNCELLEME ---
+  // --- 3. PROFİL BİLGİLERİNİ GÜNCELLE (İsim & Email) ---
   Future<void> updateMyProfile(String newName, String newEmail) async {
     isLoading.value = true;
-    bool success = await _userService.updateProfile(newName, newEmail);
+
+    // Sadece isim ve mail gönderiyoruz
+    bool success = await _userService.updateProfile(fullName: newName, email: newEmail);
+
     isLoading.value = false;
 
     if (success) {
@@ -112,11 +139,15 @@ class ProfileController extends GetxController {
       Get.snackbar("Başarılı", "Profil bilgileriniz güncellendi",
           backgroundColor: Colors.green, colorText: Colors.white, snackPosition: SnackPosition.bottom);
 
-      // Verileri tekrar çek ki ekrana yansısın
+      // Ekrandaki verileri tazele
       loadUserProfile();
+    } else {
+      Get.snackbar("Hata", "Güncelleme başarısız oldu.",
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 
+  // --- 4. ÇIKIŞ YAP ---
   void logout() async {
     Get.defaultDialog(
       title: "Çıkış Yap",
@@ -126,9 +157,14 @@ class ProfileController extends GetxController {
       confirmTextColor: Colors.white,
       buttonColor: const Color(0xFF1E3C72),
       onConfirm: () async {
-        // Sadece servisi çağır, yönlendirmeyi servis yapacak
         await _authService.logout();
       },
     );
+  }
+
+  @override
+  void onClose() {
+    apiKeyController.dispose();
+    super.onClose();
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get_x/get.dart';
 import 'package:intl/intl.dart';
-
 import '../../models/chat_message_model.dart';
 import 'ai_controller.dart';
 

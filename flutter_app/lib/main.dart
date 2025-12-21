@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get_x/get.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'screens/auth_screens/view/login_view.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'screens/splash/splash_view.dart';
+import 'services/auth_service.dart';
+
 
 
 
@@ -10,6 +12,7 @@ void main() async { // async yap
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('tr_TR', null);
   await dotenv.load(fileName: ".env");
+  Get.put(AuthService());
   runApp(const MyApp());
 }
 
@@ -36,7 +39,7 @@ class MyApp extends StatelessWidget {
       ),
 
       // Uygulama ilk açıldığında hangi ekran gelsin?
-      home: LoginView(),
+      home: SplashView(),
     );
   }
 }

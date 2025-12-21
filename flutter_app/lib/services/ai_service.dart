@@ -16,7 +16,9 @@ class AIService extends GetConnect {
   Future<String?> sendMessage(String message) async {
     try {
       String? token = await _storage.read(key: 'jwt_token');
-      String? apiKey = await _storage.read(key: 'gemini_api_key');
+
+      // Artık 'x-gemini-api-key' göndermek ZORUNLU DEĞİL.
+      // Backend token'dan kullanıcıyı bulup veritabanındaki key'i kullanacak.
 
       final response = await post(
           '/ai/chat',
@@ -24,7 +26,6 @@ class AIService extends GetConnect {
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
-            'x-gemini-api-key': apiKey ?? ""
           }
       );
 

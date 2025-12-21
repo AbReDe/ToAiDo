@@ -8,6 +8,7 @@ class UserProfile {
   final int totalTasks;     // İstatistik
   final int completedTasks; // İstatistik
   final int friendsCount;   // İstatistik
+  final String? geminiApiKey;
 
   UserProfile({
     required this.id,
@@ -17,6 +18,7 @@ class UserProfile {
     this.totalTasks = 0,
     this.completedTasks = 0,
     this.friendsCount = 0,
+    this.geminiApiKey,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class UserProfile {
       totalTasks: json['total_tasks'] ?? 0,
       completedTasks: json['completed_tasks'] ?? 0,
       friendsCount: json['friends_count'] ?? 0,
+      geminiApiKey: json['gemini_api_key'],
     );
   }
 

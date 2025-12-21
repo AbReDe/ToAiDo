@@ -1,6 +1,3 @@
-// lib/services/user_service.dart
-
-
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
 import '../models/user_profile_model.dart';
@@ -8,16 +5,16 @@ import '../models/user_profile_model.dart';
 class UserService extends GetConnect {
   final _storage = const FlutterSecureStorage();
 
-  // Emülatör IP'si (10.0.2.2), Gerçek cihazsa PC IP'si
-  final String url = 'http://10.0.2.2:8000';
+
+  final String _baseUrl = 'http://10.0.2.2:8000';
 
   @override
   void onInit() {
-    httpClient.baseUrl = url;
-    httpClient.timeout = const Duration(seconds: 10);
+    httpClient.baseUrl = _baseUrl;
+    httpClient.timeout = const Duration(seconds: 20);
+    print("✅ UserService Başlatıldı. Hedef URL: ${httpClient.baseUrl}");
   }
 
-  // Token Header Hazırlayıcı
   Future<Map<String, String>> _getHeaders() async {
     String? token = await _storage.read(key: 'jwt_token');
     return {
@@ -26,42 +23,69 @@ class UserService extends GetConnect {
     };
   }
 
-  // 1. PROFİL BİLGİLERİNİ GETİR (GET /users/me)
+  // 1. PROFİLİ GETİR
   Future<UserProfile?> getMyProfile() async {
     try {
       final headers = await _getHeaders();
       final response = await get('/users/me', headers: headers);
 
-      if (response.status.hasError) {
-        print("Profil Çekme Hatası: ${response.statusText}");
+      // --- EĞER TOKEN GEÇERSİZSE (401) ---
+      if (response.statusCode == 401) {
+        print("⛔ Token süresi dolmuş veya geçersiz. Çıkış yapılıyor.");
+        await _storage.delete(key: 'jwt_token');
+        Get.offAllNamed('/login'); // Veya LoginView()
         return null;
       }
+      // ------------------------------------
 
+      if (response.status.hasError) {
+        return null;
+      }
       return UserProfile.fromJson(response.body);
     } catch (e) {
-      print("Hata: $e");
       return null;
     }
   }
 
-  // 2. PROFİL GÜNCELLE (PUT /users/me)
-  Future<bool> updateProfile(String fullName, String email) async {
+  // 2. PROFİL GÜNCELLE (Konsol Ajanlı Versiyon)
+  Future<bool> updateProfile({String? fullName, String? email, String? apiKey}) async {
+    print("---------------------------------------------");
+    print("🚀 UserService: updateProfile tetiklendi!");
+
     try {
       final headers = await _getHeaders();
-      final body = {
-        "full_name": fullName,
-        "email": email
-      };
+      final Map<String, dynamic> body = {};
 
+      if (fullName != null) body["full_name"] = fullName;
+      if (email != null) body["email"] = email;
+
+      // API Key kontrolü
+      if (apiKey != null && apiKey.isNotEmpty) {
+        body["gemini_api_key"] = apiKey;
+        print("🔑 API Key pakete eklendi: $apiKey");
+      }
+
+      print("📦 Gönderilen Body: $body");
+      print("🌐 İstek Adresi: ${httpClient.baseUrl}/users/me");
+
+      // PUT İsteği
       final response = await put('/users/me', body, headers: headers);
 
+      print("📡 Sunucu Cevap Kodu: ${response.statusCode}");
+      print("📡 Sunucu Cevabı: ${response.bodyString}");
+
       if (response.status.hasError) {
-        Get.snackbar("Hata", response.body['detail'] ?? "Güncelleme başarısız");
+        print("❌ HATA: Sunucu olumsuz döndü.");
         return false;
       }
+
+      print("✅ BAŞARILI: Sunucu kabul etti.");
       return true;
     } catch (e) {
+      print("❌ KRİTİK BAĞLANTI HATASI (Catch): $e");
       return false;
+    } finally {
+      print("---------------------------------------------");
     }
   }
 }

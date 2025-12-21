@@ -8,7 +8,15 @@ class Task {
   final String priority;
   final DateTime? dueDate;
   final int? ownerId;
-  final String? ownerName; // <-- YENİ: Görevi alan kişinin adı
+  final String? ownerName;
+  final int? projectId; // Projeden gelip gelmediğini anlamak için
+
+  // --- YENİ EKLENENLER ---
+  final String? repeat; // "daily", "weekly", "none"
+  final List<String> tags; // ["yazılım", "spor"]
+
+  final List<String> completedDates;
+  // -----------------------
 
   Task({
     this.id,
@@ -19,6 +27,11 @@ class Task {
     this.dueDate,
     this.ownerId,
     this.ownerName,
+    this.projectId,
+    this.repeat = "none",
+    this.tags = const [],
+    this.completedDates = const [],
+
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
@@ -30,12 +43,19 @@ class Task {
       priority: json['priority'] ?? "medium",
       dueDate: json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
       ownerId: json['owner_id'],
-      // Backend'den 'owner' objesi gelirse içindeki 'full_name'i al, yoksa null
       ownerName: json['owner'] != null ? json['owner']['full_name'] : null,
+      projectId: json['project_id'],
+
+      // JSON'dan okuma (Backend henüz göndermiyor olabilir, güvenli okuyalım)
+      repeat: json['repeat'] ?? "none",
+      tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
+      completedDates: json['completed_dates'] != null
+          ? List<String>.from(json['completed_dates'])
+          : [],
     );
+
   }
 
-  // toJson kısmı aynı kalabilir...
   Map<String, dynamic> toJson() {
     return {
       'title': title,
@@ -43,6 +63,8 @@ class Task {
       'status': status,
       'priority': priority,
       'due_date': dueDate?.toIso8601String(),
+      'repeat': repeat, // Gönderiyoruz
+      'tags': tags,     // Gönderiyoruz
     };
   }
 }
