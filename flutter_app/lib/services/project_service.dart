@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
 
@@ -8,11 +9,11 @@ import '../models/task.dart';
 
 class ProjectService extends GetConnect {
   final _storage = const FlutterSecureStorage();
-  final String url = 'http://10.0.2.2:8000';
+  final String _baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
 
   @override
   void onInit() {
-    httpClient.baseUrl = url;
+    httpClient.baseUrl = _baseUrl;
     httpClient.timeout = const Duration(seconds: 10);
   }
 

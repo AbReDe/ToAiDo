@@ -2,14 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_app/screens/profil_page/profile_controller.dart';
-import 'package:get_x/get.dart';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:get_x/get.dart'; // URL için
+ // Controller Yolu
 
 // --- 1. HESABI DÜZENLE SAYFASI ---
 class EditProfileView extends StatelessWidget {
-  // Mevcut controller'ı buluyoruz
   final ProfileController controller = Get.find<ProfileController>();
-
-  // Inputlar için controller (TextEditingController)
   final TextEditingController nameInput = TextEditingController();
   final TextEditingController emailInput = TextEditingController();
 
@@ -21,17 +21,60 @@ class EditProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Base URL'i al (Resim göstermek için)
+    final String baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
+
     return Scaffold(
       appBar: AppBar(title: const Text("Profili Düzenle"), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // ... (Resim kısmı aynı kalabilir) ...
-            const CircleAvatar(
-              radius: 50,
-              backgroundImage: NetworkImage("https://cdn-icons-png.flaticon.com/512/3135/3135715.png"),
+            // --- PROFİL FOTOĞRAFI ALANI ---
+            Center(
+              child: Stack(
+                children: [
+                  // PROFİL RESMİ
+                  Obx(() {
+                    String baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
+                    if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+
+                    String avatarPath = controller.avatarUrl.value;
+                    if (avatarPath.isNotEmpty && !avatarPath.startsWith('/')) {
+                      avatarPath = '/$avatarPath';
+                    }
+
+                    String fullUrl = avatarPath.isNotEmpty ? "$baseUrl$avatarPath" : "";
+
+                    return CircleAvatar(
+                      radius: 60,
+                      backgroundColor: Colors.grey.shade300,
+                      backgroundImage: fullUrl.isNotEmpty
+                          ? NetworkImage(fullUrl)
+                          : const NetworkImage("https://cdn-icons-png.flaticon.com/512/3135/3135715.png"),
+                      onBackgroundImageError: (_, __) {
+                        print("❌ Edit Sayfası Resim Hatası");
+                      },
+                    );
+                  }),
+
+                  // KAMERA İKONU (Tıklanabilir)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: controller.pickAndUploadImage, // <-- FONKSİYON BURAYA
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(color: Color(0xFF1E3C72), shape: BoxShape.circle),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  )
+                ],
+              ),
             ),
+
             const SizedBox(height: 30),
 
             // INPUTLAR
@@ -68,7 +111,7 @@ class EditProfileView extends StatelessWidget {
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3C72)),
                 child: controller.isLoading.value
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("DEĞİŞİKLİKLERİ KAYDET", style: TextStyle(color: Colors.white)),
+                    : const Text("DEĞİŞİKLİKLERİ KAYDET", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               )),
             ),
           ],
@@ -87,6 +130,7 @@ class EditProfileView extends StatelessWidget {
     );
   }
 }
+
 // --- 2. BİLDİRİMLER SAYFASI ---
 class NotificationsView extends StatelessWidget {
   @override

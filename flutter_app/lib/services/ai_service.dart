@@ -5,11 +5,11 @@ import 'package:get_x/get.dart';
 
 class AIService extends GetConnect {
   final _storage = const FlutterSecureStorage();
-  final String url = 'http://10.0.2.2:8000';
+  final String _baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
 
   @override
   void onInit() {
-    httpClient.baseUrl = url;
+    httpClient.baseUrl = _baseUrl;
     httpClient.timeout = const Duration(seconds: 30); // AI cevapları uzun sürebilir
   }
 

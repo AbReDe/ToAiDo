@@ -1,13 +1,14 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/user_profile_model.dart';
 
 class UserService extends GetConnect {
   final _storage = const FlutterSecureStorage();
 
 
-  final String _baseUrl = 'http://10.0.2.2:8000';
-
+  final String _baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
   @override
   void onInit() {
     httpClient.baseUrl = _baseUrl;
@@ -86,6 +87,31 @@ class UserService extends GetConnect {
       return false;
     } finally {
       print("---------------------------------------------");
+    }
+  }
+
+
+  Future<String?> uploadAvatar(XFile imageFile) async {
+    try {
+      final headers = await _getHeaders();
+      // Content-Type'ı multipart yapacağımız için header'dan siliyoruz, GetX otomatik ayarlar
+      headers.remove('Content-Type');
+
+      final form = FormData({
+        'file': MultipartFile(imageFile.path, filename: 'avatar.jpg'),
+      });
+
+      final response = await post('/users/me/avatar', form, headers: headers);
+
+      if (response.status.hasError) {
+        print("Upload Hatası: ${response.bodyString}");
+        return null;
+      }
+
+      return response.body['avatar_url'];
+    } catch (e) {
+      print("Hata: $e");
+      return null;
     }
   }
 }

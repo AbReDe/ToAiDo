@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
 
@@ -6,10 +7,21 @@ import '../screens/auth_screens/view/login_view.dart';
 class AuthService extends GetConnect {
   // Token'ı güvenli saklamak için kasa
   final _storage = const FlutterSecureStorage();
+  final String _baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
 
   @override
   void onInit() {
-    httpClient.baseUrl = 'http://10.0.2.2:8000';
+
+
+    print("------------------------------------------------");
+    print("🚀 AUTH SERVICE BAŞLATILIYOR");
+    print("🌐 Hedef URL: $_baseUrl");
+    print("------------------------------------------------");
+
+
+
+    httpClient.baseUrl = _baseUrl;
+
     httpClient.timeout = const Duration(seconds: 10);
   }
 
@@ -41,7 +53,6 @@ class AuthService extends GetConnect {
     }
   }
 
-  // --- GİRİŞ YAP (LOGIN) ---
   // --- GİRİŞ YAP (LOGIN) ---
   Future<bool> loginUser(String username, String password) async {
     try {

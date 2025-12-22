@@ -1,18 +1,43 @@
 // lib/services/friend_service.dart
 
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
 import '../models/friend_model.dart';
+import '../models/projectmember.dart';
 
 class FriendService extends GetConnect {
   final _storage = const FlutterSecureStorage();
-  final String url = 'http://10.0.2.2:8000';
+  final String _baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
 
   @override
   void onInit() {
-    httpClient.baseUrl = url;
+    httpClient.baseUrl = _baseUrl;
   }
+
+
+
+
+  // KULLANICI ARA
+  Future<List<ProjectMember>> searchUsers(String query) async {
+    if (query.length < 2) return [];
+
+    try {
+      final headers = await _getHeaders();
+      final response = await get('/users/search?query=$query', headers: headers);
+
+      if (response.status.hasError) return [];
+
+      List<dynamic> body = response.body;
+      // Backend UserBasicInfo dönüyor, ProjectMember ile yapısı uyumlu olduğu için onu kullanıyoruz
+      return body.map((item) => ProjectMember.fromJson(item)).toList();
+    } catch (e) {
+      print("Arama hatası: $e");
+      return [];
+    }
+  }
+
 
   Future<Map<String, String>> _getHeaders() async {
     String? token = await _storage.read(key: 'jwt_token');

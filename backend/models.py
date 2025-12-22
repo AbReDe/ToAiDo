@@ -11,7 +11,7 @@ project_members = Table(
     Column('project_id', Integer, ForeignKey('projects.id'))
 )
 
-# --- KULLANICI ---
+# --- KULLANICI (GÜNCELLENDİ) ---
 class User(Base):
     __tablename__ = "users"
 
@@ -20,7 +20,12 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     full_name = Column(String)
+    
+    # --- YENİ EKLENEN SÜTUNLAR ---
     gemini_api_key = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True) # <-- BU EKSİKTİ, EKLENDİ!
+    # -----------------------------
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     tasks = relationship("Task", back_populates="owner")
@@ -56,7 +61,7 @@ class ProjectInvitation(Base):
     sender = relationship("User", foreign_keys=[sender_id])
     receiver = relationship("User", foreign_keys=[receiver_id])
 
-# --- GÖREV (GÜNCELLENDİ) ---
+# --- GÖREV ---
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -66,12 +71,10 @@ class Task(Base):
     status = Column(String, default="Yapılacak")
     priority = Column(String, default="medium")
     due_date = Column(DateTime, nullable=True)
-    completed_dates = Column(JSON, default=[])
     
-    # --- YENİ EKLENEN ALANLAR ---
-    repeat = Column(String, default="none") # daily, weekly, monthly, none
-    tags = Column(JSON, default=[])         # ["yazılım", "spor"]
-    # ----------------------------
+    repeat = Column(String, default="none")
+    tags = Column(JSON, default=[])         
+    completed_dates = Column(JSON, default=[]) # Bu da önemli
 
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True) 
@@ -81,7 +84,7 @@ class Task(Base):
     owner = relationship("User", back_populates="tasks")
     project = relationship("Project", back_populates="tasks")
     
-    # Arkadaşlık tablosu
+# --- ARKADAŞLIK ---
 class Friendship(Base):
     __tablename__ = "friendships"
 

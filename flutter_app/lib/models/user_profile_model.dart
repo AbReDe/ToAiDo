@@ -5,9 +5,14 @@ class UserProfile {
   final String username;
   final String email;
   final String? fullName;
-  final int totalTasks;     // İstatistik
-  final int completedTasks; // İstatistik
-  final int friendsCount;   // İstatistik
+
+  // --- YENİ EKLENEN ---
+  final String? avatarUrl;
+  // --------------------
+
+  final int totalTasks;
+  final int completedTasks;
+  final int friendsCount;
   final String? geminiApiKey;
 
   UserProfile({
@@ -15,6 +20,7 @@ class UserProfile {
     required this.username,
     required this.email,
     this.fullName,
+    this.avatarUrl, // Constructor'a ekle
     this.totalTasks = 0,
     this.completedTasks = 0,
     this.friendsCount = 0,
@@ -27,6 +33,11 @@ class UserProfile {
       username: json['username'],
       email: json['email'],
       fullName: json['full_name'],
+
+      // --- JSON OKUMA ---
+      avatarUrl: json['avatar_url'],
+      // ------------------
+
       totalTasks: json['total_tasks'] ?? 0,
       completedTasks: json['completed_tasks'] ?? 0,
       friendsCount: json['friends_count'] ?? 0,
@@ -34,7 +45,6 @@ class UserProfile {
     );
   }
 
-  
   Map<String, dynamic> toJson() {
     return {
       'full_name': fullName,

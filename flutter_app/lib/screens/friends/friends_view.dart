@@ -1,9 +1,11 @@
 // lib/views/friends_view.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get_x/get.dart';
 
-import 'friends_controller.dart';
+import 'friends_controller.dart'; // URL için gerekli
+
 
 class FriendsView extends StatelessWidget {
   final FriendsController controller = Get.put(FriendsController());
@@ -32,7 +34,7 @@ class FriendsView extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.person_add),
-              onPressed: () => _showAddDialog(context),
+              onPressed: () => _showSearchBottomSheet(context),
             )
           ],
         ),
@@ -46,10 +48,12 @@ class FriendsView extends StatelessWidget {
               itemBuilder: (context, index) {
                 var friend = controller.friendsList[index];
                 return ListTile(
-                  leading: CircleAvatar(child: Text(friend.fullName[0])),
+                  // --- GÜNCELLENEN KISIM ---
+                  leading: _buildUserAvatar(friend.avatarUrl, friend.fullName),
+                  // -------------------------
                   title: Text(friend.fullName),
                   subtitle: Text("@${friend.username}"),
-                  trailing: const Icon(Icons.chat_bubble_outline),
+                  trailing: const Icon(Icons.check_circle, color: Colors.green),
                 );
               },
             )),
@@ -64,9 +68,11 @@ class FriendsView extends StatelessWidget {
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   child: ListTile(
-                    leading: CircleAvatar(backgroundColor: Colors.orange, child: Text(req.fullName[0])),
+                    // --- GÜNCELLENEN KISIM ---
+                    leading: _buildUserAvatar(req.avatarUrl, req.fullName),
+                    // -------------------------
                     title: Text(req.fullName),
-                    subtitle: Text("Arkadaşlık isteği gönderdi"),
+                    subtitle: const Text("Arkadaşlık isteği gönderdi"),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -90,19 +96,108 @@ class FriendsView extends StatelessWidget {
     );
   }
 
-  void _showAddDialog(BuildContext context) {
-    final TextEditingController _ctrl = TextEditingController();
-    Get.defaultDialog(
-      title: "Arkadaş Ekle",
-      content: TextField(
-        controller: _ctrl,
-        decoration: const InputDecoration(hintText: "Kullanıcı adı girin (örn: salim)"),
+  // --- MODERN ARAMA PANELİ ---
+  void _showSearchBottomSheet(BuildContext context) {
+    controller.searchCtrl.clear();
+    controller.searchResults.clear();
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        height: 500,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+            const SizedBox(height: 20),
+
+            const Text("Kullanıcı Ara", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E3C72))),
+            const SizedBox(height: 15),
+
+            TextField(
+              controller: controller.searchCtrl,
+              onChanged: controller.onSearchChanged,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: "Kullanıcı adı veya isim girin...",
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: Obx(() {
+                if (controller.isSearching.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (controller.searchCtrl.text.isNotEmpty && controller.searchResults.isEmpty) {
+                  return const Center(child: Text("Kullanıcı bulunamadı.", style: TextStyle(color: Colors.grey)));
+                }
+
+                return ListView.separated(
+                  itemCount: controller.searchResults.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    var user = controller.searchResults[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      // --- GÜNCELLENEN KISIM ---
+                      leading: _buildUserAvatar(user.avatarUrl, user.fullName),
+                      // -------------------------
+                      title: Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text("@${user.username}"),
+                      trailing: ElevatedButton(
+                        onPressed: () => controller.sendRequest(user.username),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3C72),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        child: const Text("Ekle", style: TextStyle(color: Colors.white)),
+                      ),
+                    );
+                  },
+                );
+              }),
+            ),
+          ],
+        ),
       ),
-      textConfirm: "İstek Gönder",
-      textCancel: "İptal",
-      confirmTextColor: Colors.white,
-      buttonColor: const Color(0xFF1E3C72),
-      onConfirm: () => controller.sendRequest(_ctrl.text),
+      isScrollControlled: true,
+    );
+  }
+
+  // --- RESİM GÖSTERME YARDIMCISI ---
+  Widget _buildUserAvatar(String? partialUrl, String fullName) {
+    // 1. Base URL'i al (IP Adresi)
+    String baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
+
+    // 2. Eğer backend'den resim yolu geldiyse birleştir
+    String? fullUrl;
+    if (partialUrl != null && partialUrl.isNotEmpty) {
+      fullUrl = "$baseUrl$partialUrl";
+    }
+
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: const Color(0xFF1E3C72),
+      // Resim varsa NetworkImage, yoksa null
+      backgroundImage: fullUrl != null ? NetworkImage(fullUrl) : null,
+      // Resim yoksa İsmin Baş Harfi
+      child: fullUrl == null
+          ? Text(
+        fullName.isNotEmpty ? fullName[0].toUpperCase() : "?",
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      )
+          : null,
     );
   }
 }

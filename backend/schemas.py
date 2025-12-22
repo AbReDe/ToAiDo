@@ -11,6 +11,7 @@ class UserBasicInfo(BaseModel):
     id: int
     username: str
     full_name: str
+    avatar_url: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -51,10 +52,12 @@ class UserProfile(BaseModel):
     username: str
     email: EmailStr
     full_name: str
+    avatar_url: Optional[str] = None
     total_tasks: int
     completed_tasks: int
     friends_count: int
     gemini_api_key: Optional[str] = None 
+    
 
     class Config:
         from_attributes = True
