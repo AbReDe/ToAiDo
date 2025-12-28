@@ -9,7 +9,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT Ayarları (Bunu gerçek projede .env dosyasında saklamalısın)
 SECRET_KEY = "cok_gizli_super_anahtar_buraya_yazilacak"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 1 gün geçerli
+ACCESS_TOKEN_EXPIRE_MINUTES = 43200
 
 # Şifreyi Hashle (Gizle)
 def get_password_hash(password):

@@ -3,30 +3,38 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
 
 import '../../models/chat_message_model.dart';
+import '../../models/task.dart';
 import '../../models/user_profile_model.dart';
 import '../../services/ai_service.dart';
-import '../../services/user_service.dart'; // <-- Eklendi
+import '../../services/task_service.dart';
+import '../../services/user_service.dart';
+import '../homepage/home_controller.dart'; // <-- Eklendi
+import 'package:intl/intl.dart'; // Tarih formatı için
 
 
 class AIController extends GetxController {
   final AIService _service = Get.put(AIService());
-  final _storage = const FlutterSecureStorage(); // <-- Depolama eklendi
-
-  final TextEditingController textCtrl = TextEditingController();
-  final ScrollController scrollCtrl = ScrollController();
   final UserService _userService = Get.put(UserService());
+  final TaskService _taskService = Get.put(TaskService()); // <-- Eklendi
+  final _storage = const FlutterSecureStorage();
+
+  final TextEditingController textCtrl = TextEditingController(); // Sohbet için
+  final TextEditingController topicCtrl = TextEditingController(); // Görev konusu için
+  final ScrollController scrollCtrl = ScrollController();
 
   var messages = <ChatMessage>[].obs;
+
+  // --- YENİ: ÖNERİLEN GÖREVLER LİSTESİ ---
+  var generatedSuggestions = <String>[].obs;
+  // ---------------------------------------
+
   var isLoading = false.obs;
   var isChatMode = true.obs;
-
-  // API Key var mı yok mu takip edelim
   var hasApiKey = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    // Ekran açılınca kontrol et
     checkApiKeyAndWelcome();
   }
 
@@ -59,7 +67,6 @@ class AIController extends GetxController {
         time: DateTime.now(),
       ));
 
-      // Otomatik açılması yerine kullanıcı butona bassın (Daha az rahatsız edici)
     }
   }
 
@@ -113,6 +120,95 @@ class AIController extends GetxController {
   void switchMode(bool chatMode) {
     isChatMode.value = chatMode;
   }
+
+
+  // --- 1. GÖREVLERİ OLUŞTUR (AI'dan İste) ---
+  void generateTasks() async {
+    String topic = topicCtrl.text.trim();
+    if (topic.isEmpty) {
+      Get.snackbar("Uyarı", "Lütfen bir konu girin (Örn: Python Öğrenmek)");
+      return;
+    }
+
+    // Klavyeyi kapat
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    isLoading.value = true;
+    generatedSuggestions.clear(); // Eski listeyi temizle
+
+    try {
+      // Servisteki generate fonksiyonunu çağır (Servisi güncellememiz gerekecek, aşağıda yazdım)
+      // Şimdilik servisin döndüğü List<String>'i alıyoruz
+      List<String> results = await _service.generateTaskSuggestions(topic);
+      generatedSuggestions.value = results;
+
+      if(results.isEmpty) {
+        Get.snackbar("Bilgi", "Öneri bulunamadı veya bir hata oluştu.");
+      }
+    } catch (e) {
+      Get.snackbar("Hata", "AI bağlantısında sorun: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+
+  void addTaskToSystem(String title) async {
+    // 1. Tarih Seçtir
+    DateTime? pickedDate = await showDatePicker(
+      context: Get.context!,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            primaryColor: const Color(0xFF1E3C72),
+            colorScheme: const ColorScheme.light(primary: Color(0xFF1E3C72)),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedDate == null) return; // İptal etti
+
+    // 2. Task Modelini Oluştur
+    // Saat olarak şu anı verelim veya sabah 09:00 yapalım
+    final DateTime finalDate = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, 9, 0);
+
+    Task newTask = Task(
+      title: title,
+      description: "AI tarafından oluşturuldu",
+      priority: "medium",
+      status: "Yapılacak",
+      dueDate: finalDate,
+      repeat: "none",
+      tags: ["AI"],
+    );
+
+    // 3. Servise Gönder
+    Get.snackbar("Kaydediliyor", "$title ekleniyor...", showProgressIndicator: true);
+
+    bool success = await _taskService.createTask(newTask);
+
+    if (success) {
+      // Listeden sil ki tekrar eklenmesin (Opsiyonel)
+      generatedSuggestions.remove(title);
+
+      // Home Controller'ı yenile
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().fetchAllTasks();
+      }
+
+      Get.back(); // Snackbar kapat
+      Get.snackbar("Başarılı", "Görev ${DateFormat('dd/MM').format(finalDate)} tarihine eklendi!",
+          backgroundColor: Colors.green, colorText: Colors.white);
+    } else {
+      Get.snackbar("Hata", "Kaydedilemedi.");
+    }
+  }
+
 
   // --- MESAJ GÖNDERME ---
   void sendMessage() async {

@@ -45,7 +45,7 @@ class AIChatView extends StatelessWidget {
             child: Obx(() {
               // GÖREV MODU (GELECEKTE EKLENECEK)
               if (!controller.isChatMode.value) {
-                return _buildTaskGenerationPlaceholder();
+                return _buildTaskGenerator(context);
               }
 
               // SOHBET MODU
@@ -187,28 +187,95 @@ class AIChatView extends StatelessWidget {
     );
   }
 
-  Widget _buildTaskGenerationPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.auto_awesome, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 20),
-          const Text(
-            "Yapay Zeka Görev Oluşturucu",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black54),
+  Widget _buildTaskGenerator(BuildContext context) {
+    return Column(
+      children: [
+        // 1. GİRİŞ ALANI
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
           ),
-          const SizedBox(height: 10),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 40),
-            child: Text(
-              "Yakında burada sadece konuyu yazarak tam kapsamlı proje planları ve görev listeleri oluşturabileceksiniz.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                "Hedefin Nedir?",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E3C72)),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: controller.topicCtrl,
+                decoration: InputDecoration(
+                  hintText: "Örn: 1 haftada Python öğrenmek",
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                  prefixIcon: const Icon(Icons.lightbulb_outline, color: Colors.orange),
+                ),
+              ),
+              const SizedBox(height: 15),
+              Obx(() => ElevatedButton(
+                onPressed: controller.isLoading.value ? null : controller.generateTasks,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3C72),
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+                child: controller.isLoading.value
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text("Plan Oluştur", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              )),
+            ],
           ),
-        ],
-      ),
+        ),
+
+        // 2. ÖNERİ LİSTESİ
+        Expanded(
+          child: Obx(() {
+            if (controller.generatedSuggestions.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.list_alt, size: 60, color: Colors.grey.shade300),
+                    const SizedBox(height: 10),
+                    const Text("Henüz bir plan oluşturulmadı.", style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: controller.generatedSuggestions.length,
+              itemBuilder: (context, index) {
+                String taskTitle = controller.generatedSuggestions[index];
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.blue.shade50,
+                      child: const Icon(Icons.auto_awesome, color: Color(0xFF1E3C72), size: 20),
+                    ),
+                    title: Text(taskTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: const Text("Tarih seçmek için butona basın"),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.calendar_month, color: Colors.green, size: 30),
+                      onPressed: () => controller.addTaskToSystem(taskTitle),
+                      tooltip: "Takvime Ekle",
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+      ],
     );
   }
 }

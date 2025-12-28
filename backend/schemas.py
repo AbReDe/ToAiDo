@@ -58,7 +58,6 @@ class UserProfile(BaseModel):
     friends_count: int
     gemini_api_key: Optional[str] = None 
     
-
     class Config:
         from_attributes = True
 
@@ -73,19 +72,14 @@ class TaskCreate(BaseModel):
     status: Optional[str] = "Yapılacak"
     due_date: Optional[datetime] = None
     
-    # --- YENİ ---
     repeat: Optional[str] = "none"
     tags: List[str] = [] 
-    # ------------
 
-# Görev güncellerken
 class TaskUpdate(BaseModel):
     status: Optional[str] = None
     title: Optional[str] = None
     priority: Optional[str] = None
-    # Güncelleme için de eklenebilir ama şimdilik gerek yok
 
-# Frontend'e göndereceğimiz veri formatı
 class TaskResponse(BaseModel):
     id: int
     title: str
@@ -94,11 +88,9 @@ class TaskResponse(BaseModel):
     priority: str
     due_date: Optional[datetime]
    
-    
-    # --- YENİ ---
     repeat: Optional[str] = "none"
     tags: List[str] = []
-    # ------------
+    
     completed_dates: List[str] = []
     owner_id: Optional[int] = None
     project_id: Optional[int] = None
@@ -124,6 +116,16 @@ class ProjectResponse(BaseModel):
     owner_id: int
     created_at: datetime
 
+    class Config:
+        from_attributes = True
+
+class ProjectInvitationResponse(BaseModel):
+    id: int
+    project_id: int
+    project_name: str
+    sender_username: str
+    status: str
+    
     class Config:
         from_attributes = True
 
@@ -153,31 +155,4 @@ class AIGenerateRequest(BaseModel):
 
 class AIGenerateResponse(BaseModel):
     message: str
-    created_task_count: int
-
-
-
-# --- PROJE DAVETİ ŞEMASI ---
-
-class ProjectInvitationResponse(BaseModel):
-    id: int
-    project_id: int
-    project_name: str  # Projenin adını direkt gönderelim
-    sender_username: str # Gönderen kişinin adı
-    status: str
-    
-    class Config:
-        from_attributes = True
-
-
-
-# --- AI (YAPAY ZEKA) ŞEMALARI ---
-class AIChatRequest(BaseModel):
-    message: str
-
-class AIGenerateRequest(BaseModel):
-    topic: str
-
-class AIGenerateResponse(BaseModel):
-    message: str
-    created_task_count: int
+    suggestions: List[str] = [] # <-- DOĞRU OLAN BU (Liste dönüyor)

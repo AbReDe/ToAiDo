@@ -9,8 +9,7 @@ import '../models/projectmember.dart';
 
 class FriendService extends GetConnect {
   final _storage = const FlutterSecureStorage();
-  final String _baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
-
+  final String _baseUrl = 'http://10.0.2.2:8000';
   @override
   void onInit() {
     httpClient.baseUrl = _baseUrl;

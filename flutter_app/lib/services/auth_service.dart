@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_x/get.dart';
@@ -7,8 +8,7 @@ import '../screens/auth_screens/view/login_view.dart';
 class AuthService extends GetConnect {
   // Token'ı güvenli saklamak için kasa
   final _storage = const FlutterSecureStorage();
-  final String _baseUrl = dotenv.env['API_URL'] ?? 'http://10.0.2.2:8000';
-
+  final String _baseUrl = 'http://10.0.2.2:8000';
   @override
   void onInit() {
 
@@ -38,58 +38,76 @@ class AuthService extends GetConnect {
         },
       );
 
+      // --- HATA KONTROLÜNÜ GÜVENLİ YAPALIM ---
       if (response.status.hasError) {
-        print("Kayıt Hatası: ${response.bodyString}"); // Hata ayıklama için
-        Get.snackbar("Hata", response.body['detail'] ?? "Kayıt başarısız oldu",
-            snackPosition: SnackPosition.bottom);
+        print("Kayıt Başarısız. Kod: ${response.statusCode}");
+        print("Body: ${response.body}");
+
+        // Eğer body null ise varsayılan mesaj göster, null değilse detayına bak
+        String errorMessage = "Kayıt başarısız oldu";
+        if (response.body != null && response.body is Map && response.body['detail'] != null) {
+          errorMessage = response.body['detail'];
+        }
+
+        Get.snackbar("Hata", errorMessage,
+            snackPosition: SnackPosition.bottom, backgroundColor: Colors.red, colorText: Colors.white);
         return false;
       }
 
-      return true; // Kayıt başarılı (200 OK)
+      return true;
     } catch (e) {
       print("Bağlantı Hatası: $e");
-      Get.snackbar("Hata", "Sunucuya bağlanılamadı", snackPosition: SnackPosition.bottom);
+      Get.snackbar("Hata", "Sunucuya bağlanılamadı. IP adresini kontrol et.",
+          snackPosition: SnackPosition.bottom);
       return false;
     }
   }
 
+
   // --- GİRİŞ YAP (LOGIN) ---
   Future<bool> loginUser(String username, String password) async {
+    print("------------------------------------------------");
+    print("🚀 GİRİŞ İSTEĞİ BAŞLATILIYOR...");
+    print("🌐 Hedef Adres: ${httpClient.baseUrl}/auth/login");
+
     try {
-      // Backend artık 'Form Data' istiyor, JSON değil.
-      // GetX'in FormData yapısını kullanıyoruz.
       final formData = FormData({
         "username": username,
         "password": password,
       });
 
-      final response = await post(
-        '/auth/login',
-        formData, // <-- JSON yerine bunu gönderiyoruz
-      );
+      final response = await post('/auth/login', formData);
+
+      print("📡 Status Code: ${response.statusCode}");
+      print("📡 Status Text: ${response.statusText}");
+      print("📡 Body: ${response.body}");
 
       if (response.status.hasError) {
-        // Hata detayını konsola yazdıralım
-        print("Giriş Hatası: ${response.bodyString}");
-        Get.snackbar("Giriş Başarısız", "Kullanıcı adı veya şifre hatalı",
-            snackPosition: SnackPosition.bottom);
+        String errorMsg = "Bağlantı hatası";
+        if (response.statusCode == null) {
+          errorMsg = "Sunucuya ulaşılamıyor (İnternet veya IP hatası)";
+        } else if (response.statusCode == 401) {
+          errorMsg = "Kullanıcı adı veya şifre yanlış";
+        } else {
+          errorMsg = "Hata: ${response.statusText}";
+        }
+
+        Get.snackbar("Giriş Başarısız", errorMsg,
+            snackPosition: SnackPosition.bottom, backgroundColor: Colors.red, colorText: Colors.white);
         return false;
       }
 
-      // Gelen Token'ı al
       final token = response.body['access_token'];
-
       await _storage.write(key: 'jwt_token', value: token);
-      print("Token Kaydedildi: $token");
+      print("✅ Token Kaydedildi");
 
       return true;
     } catch (e) {
-      Get.snackbar("Hata", "Bağlantı sorunu oluştu", snackPosition: SnackPosition.bottom);
-      print(e);
+      print("❌ KRİTİK HATA (Catch): $e");
+      Get.snackbar("Hata", "Bağlantı sorunu: $e", snackPosition: SnackPosition.bottom);
       return false;
     }
   }
-
   // --- TOKEN OKUMA (İleride lazım olacak) ---
   Future<String?> getToken() async {
     return await _storage.read(key: 'jwt_token');

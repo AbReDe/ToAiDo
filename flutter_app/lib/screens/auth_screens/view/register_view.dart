@@ -1,8 +1,9 @@
+// lib/views/register_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:get_x/get.dart';
 
 import '../controler/register_controller.dart';
-
 
 
 class RegisterView extends StatelessWidget {
@@ -15,9 +16,9 @@ class RegisterView extends StatelessWidget {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: SingleChildScrollView( // Klavye açılınca taşma olmasın diye
+      body: SingleChildScrollView(
         child: Container(
-          constraints: BoxConstraints(minHeight: size.height), // Tam ekran kaplasın
+          constraints: BoxConstraints(minHeight: size.height),
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -33,12 +34,12 @@ class RegisterView extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
               child: Column(
                 children: [
-                  // --- ÜST KISIM (GERİ BUTONU & BAŞLIK) ---
+                  // --- ÜST KISIM ---
                   Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                        onPressed: () => Get.back(), // Giriş ekranına dön
+                        onPressed: () => Get.back(),
                       ),
                       const Text(
                         "Hesap Oluştur",
@@ -86,12 +87,13 @@ class RegisterView extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
 
-                          // Email
+                          // Email (isEmail: true gönderiyoruz)
                           _buildTextField(
                             controller: controller.emailController,
                             label: "E-posta Adresi",
                             icon: Icons.email_outlined,
                             inputType: TextInputType.emailAddress,
+                            isEmail: true, // <-- BU PARAMETRE YENİ
                           ),
                           const SizedBox(height: 16),
 
@@ -159,7 +161,7 @@ class RegisterView extends StatelessWidget {
                         style: TextStyle(color: Colors.white),
                       ),
                       GestureDetector(
-                        onTap: () => Get.back(), // Giriş ekranına dön
+                        onTap: () => Get.back(),
                         child: const Text(
                           "Giriş Yap",
                           style: TextStyle(
@@ -179,13 +181,14 @@ class RegisterView extends StatelessWidget {
     );
   }
 
-  // Helper Widget: TextField Oluşturucu (Kod tekrarını önlemek için)
+  // --- GELİŞTİRİLMİŞ HELPER WIDGET ---
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
     bool isPassword = false,
     bool isObscure = false,
+    bool isEmail = false, // <-- Yeni parametre
     VoidCallback? toggleVisibility,
     TextInputType inputType = TextInputType.text,
   }) {
@@ -193,6 +196,8 @@ class RegisterView extends StatelessWidget {
       controller: controller,
       obscureText: isPassword ? isObscure : false,
       keyboardType: inputType,
+      enableSuggestions: !isPassword, // Şifrede öneri kapat
+      autocorrect: !isPassword,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF1E3C72)),
@@ -205,9 +210,7 @@ class RegisterView extends StatelessWidget {
           onPressed: toggleVisibility,
         )
             : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -224,11 +227,12 @@ class RegisterView extends StatelessWidget {
         if (value == null || value.isEmpty) {
           return '$label boş bırakılamaz';
         }
+        // İsim kontrolüne (Etikete) bağlı kalmak yerine parametreye bakıyoruz
+        if (isEmail && !GetUtils.isEmail(value)) {
+          return 'Geçerli bir e-posta girin';
+        }
         if (isPassword && value.length < 6) {
           return 'Şifre en az 6 karakter olmalı';
-        }
-        if (label == "E-posta Adresi" && !GetUtils.isEmail(value)) {
-          return 'Geçerli bir e-posta girin';
         }
         return null;
       },
